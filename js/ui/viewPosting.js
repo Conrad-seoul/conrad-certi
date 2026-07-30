@@ -30,13 +30,13 @@ CertApp.viewPosting = (function () {
     var wrap = ui.el('div', { class: 'view-posting' });
     wrap.appendChild(ui.el('div', { class: 'panel muted' }, [t('ps.desc')]));
 
-    var startInput = ui.el('input', { type: 'date', value: state.start });
-    var endInput = ui.el('input', { type: 'date', value: state.end });
+    var startInput = ui.dateInput({ value: state.start });
+    var endInput = ui.dateInput({ value: state.end });
     var controls = ui.el('div', { class: 'panel controls-row' }, [
       ui.el('label', {}, [t('ov.periodStart') + ' ', startInput]),
       ui.el('label', {}, [t('ov.periodEnd') + ' ', endInput]),
       ui.el('button', { class: 'btn btn-primary', text: t('common.search'), onclick: function () {
-        state.start = startInput.value; state.end = endInput.value; renderTables();
+        state.start = ui.dateValue(startInput); state.end = ui.dateValue(endInput); renderTables();
       } }),
       ui.el('button', { class: 'btn', text: t('ps.export'), onclick: onExport })
     ]);

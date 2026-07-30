@@ -62,6 +62,7 @@ CertApp.i18n = (function () {
       'common.first': '처음으로', 'common.prev': '이전', 'common.next': '다음', 'common.page': '페이지', 'common.pageJumpHint': '페이지 번호 입력 후 Enter', 'common.save': '저장', 'common.cancel': '취소', 'common.confirm': '확인',
       'login.title': '부서 공용 로그인', 'login.placeholder': '공용 비밀번호', 'login.button': '로그인', 'login.checking': '확인 중...', 'login.wrong': '비밀번호가 올바르지 않습니다.', 'login.logout': '로그아웃',
       'common.close': '닫기', 'common.addRow': '+ 행 추가', 'common.noData': '표시할 데이터가 없습니다.', 'common.cases': '건', 'common.refresh': '새로고침',
+      'common.badDate': '날짜는 YYYY-MM-DD 형식으로 입력해 주세요 (예: 2026-07-30).',
 
       'ov.periodStart': '기간 시작', 'ov.periodEnd': '기간 종료',
       'ov.endingBalance': 'ENDING BALANCE', 'ov.issuedPeriod': '이 기간 발행 (Issued)', 'ov.usedPeriod': '이 기간 사용 (Used)',
@@ -92,6 +93,7 @@ CertApp.i18n = (function () {
       'cl.product.label': '상품 (가격표)', 'cl.product.choose': '상품 선택...',
       'cl.product.discontinuedNote': '※ 상품을 선택하면 종류·금액·서비스내역·만료일이 가격표(2026.1) 기준으로 자동 입력됩니다. SPA 포함 상품권과 5만원권은 판매 종료되어 발행 목록에서 제외되었습니다 (기존 데이터는 조회·수정 가능).',
       'cl.bulkIssue.register': '전체 등록', 'cl.bulkIssue.needFields': '증서번호와 금액을 입력하세요.',
+      'cl.bulkIssue.badDate': '증서번호 "{certNo}"의 발행일/만료일을 YYYY-MM-DD 형식으로 입력해 주세요.',
       'cl.bulkIssue.duplicateCertNo': '증서번호 "{certNo}"가 이미 존재합니다.', 'cl.bulkIssue.issuedBy': '발행: {name}',
       'cl.autoResolvedDupNote': '증서번호가 "{certNo}"로 변경되어 중복이 해소됨 (자동으로 검토 필요 해제)',
       'cl.quickFill.title': '연번 자동 생성', 'cl.quickFill.desc': '시작 증서번호와 수량을 넣으면 연속 번호로 한 번에 생성됩니다 (예: SC010001 + 20장 → SC010001~SC010020). 아래 발행 목록에서 확인·수정한 뒤 "전체 등록"을 누르세요.',
@@ -265,6 +267,7 @@ CertApp.i18n = (function () {
       'common.first': 'First', 'common.prev': 'Prev', 'common.next': 'Next', 'common.page': 'Page', 'common.pageJumpHint': 'Type a page number, then Enter', 'common.save': 'Save', 'common.cancel': 'Cancel', 'common.confirm': 'Confirm',
       'login.title': 'Shared team login', 'login.placeholder': 'Shared password', 'login.button': 'Log in', 'login.checking': 'Checking...', 'login.wrong': 'Incorrect password.', 'login.logout': 'Log out',
       'common.close': 'Close', 'common.addRow': '+ Add Row', 'common.noData': 'No data to display.', 'common.cases': '', 'common.refresh': 'Refresh',
+      'common.badDate': 'Enter the date as YYYY-MM-DD (e.g. 2026-07-30).',
 
       'ov.periodStart': 'Period Start', 'ov.periodEnd': 'Period End',
       'ov.endingBalance': 'ENDING BALANCE', 'ov.issuedPeriod': 'Issued (this period)', 'ov.usedPeriod': 'Used (this period)',
@@ -295,6 +298,7 @@ CertApp.i18n = (function () {
       'cl.product.label': 'Product (price list)', 'cl.product.choose': 'Choose a product...',
       'cl.product.discontinuedNote': '※ Choosing a product auto-fills category / amount / detail / expiry from the price list (Jan 2026). SPA vouchers and the ₩50,000 gift voucher are discontinued and excluded here (existing records stay viewable/editable).',
       'cl.bulkIssue.register': 'Register All', 'cl.bulkIssue.needFields': 'Enter a Certificate No. and Amount.',
+      'cl.bulkIssue.badDate': 'Enter the issued/expiry date of "{certNo}" as YYYY-MM-DD.',
       'cl.bulkIssue.duplicateCertNo': 'Certificate No. "{certNo}" already exists.', 'cl.bulkIssue.issuedBy': 'Issued by {name}',
       'cl.autoResolvedDupNote': 'Duplicate resolved — the other record was renamed to "{certNo}" (needs-review auto-cleared)',
       'cl.quickFill.title': 'Auto-number', 'cl.quickFill.desc': 'Enter a start number and quantity to generate consecutive numbers at once (e.g. SC010001 + 20 → SC010001–SC010020). Review/edit in the issue list below, then click "Register All".',

@@ -251,18 +251,10 @@ CertApp.certificateWorkflow = (function () {
     }).then(function () { return rec; });
   }
 
-  function addYears(isoDate, years) {
-    var d = new Date(isoDate);
-    d.setFullYear(d.getFullYear() + years);
-    var y = d.getFullYear(), m = ('0' + (d.getMonth() + 1)).slice(-2), day = ('0' + d.getDate()).slice(-2);
-    return y + '-' + m + '-' + day;
-  }
-
-  // Gift Certificates are valid 5 years from issue (flat, no reduction). Service Certificates
-  // are nominally 1 year, though late use up to 5 years is still possible at a 90% value
-  // (see accounting.js computeLateUseSplit / useCertificate below).
+  // The N-year term rule (and the "last valid day = anniversary − 1 day" part of it) lives in
+  // schema.js so issuing here, importing, and the new-issue form can't drift apart.
   function defaultExpiryDate(issuedDate, category) {
-    return addYears(issuedDate, CertApp.accounting.isGiftCertificate(category) ? 5 : 1);
+    return CertApp.defaultExpiryDate(issuedDate, category);
   }
 
   // useCertificate(id, {usedDate, outletPostingAmountB, arPostingAmountC, billNo}) -> Promise<CertificateRecord>

@@ -130,17 +130,10 @@ CertApp.importPipeline = (function () {
     return fallbackExpiryDate || null;
   }
 
-  function addYears(isoDate, years) {
-    var d = new Date(isoDate);
-    d.setFullYear(d.getFullYear() + years);
-    var y = d.getFullYear(), m = ('0' + (d.getMonth() + 1)).slice(-2), day = ('0' + d.getDate()).slice(-2);
-    return y + '-' + m + '-' + day;
-  }
-
-  // GC is valid 5 years from issue; SC nominally 1 year (late use up to 5y still possible
-  // at a reduced value — see accounting.js).
+  // Only used for source rows that carry no Expiry Date of their own; an imported expiry is
+  // always kept as-is. Term rule lives in schema.js (CertApp.defaultExpiryDate).
   function defaultExpiryDate(issuedDate, category) {
-    return addYears(issuedDate, CertApp.accounting.isGiftCertificate(category) ? 5 : 1);
+    return CertApp.defaultExpiryDate(issuedDate, category);
   }
 
   function hasVoidSignal(mapped) {

@@ -90,9 +90,9 @@ CertApp.viewMiscRevenue = (function () {
       ui.el('select', { onchange: function (e) { state.category = e.target.value; renderTable(); } }, catOptions),
       ui.el('select', { onchange: function (e) { state.type = e.target.value; renderTable(); } }, typeOptions),
       ui.el('span', { text: t('mr.period') }),
-      ui.el('input', { type: 'date', value: state.periodStart, onchange: function (e) { state.periodStart = e.target.value; renderTable(); } }),
+      ui.dateInput({ value: state.periodStart, onChange: function (v) { state.periodStart = v; renderTable(); } }),
       ui.el('span', { text: '~' }),
-      ui.el('input', { type: 'date', value: state.periodEnd, onchange: function (e) { state.periodEnd = e.target.value; renderTable(); } }),
+      ui.dateInput({ value: state.periodEnd, onChange: function (v) { state.periodEnd = v; renderTable(); } }),
       ui.refreshButton(),
       ui.el('button', { class: 'btn btn-primary', text: t('mr.sync.button'), onclick: onSyncLedger })
     ]);

@@ -261,9 +261,11 @@ body {
    So a custom package is filed under the right group and remembered for next time. */
 .detail-other { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .detail-group-sel { max-width: 160px; }
-/* Date field in the issue form (see dateTextInput) — wide enough for the locale-rendered date
-   plus the native calendar picker icon. */
-input.date-text { width: 148px; }
+/* Every date field in the app (see ui.dateInput) — a text box holding YYYY-MM-DD, sized for
+   exactly that. .date-invalid marks text that isn't a readable date, since a text box has no
+   native validation of its own. */
+input.date-text { width: 120px; font-variant-numeric: tabular-nums; }
+input.date-text.date-invalid { border-color: var(--danger); background: var(--danger-light); }
 /* New-issue form alignment: 증서번호/발행일/만료일 centered, 금액 right-aligned with commas. */
 input.cert-no-input, input.date-text { text-align: center; }
 input.amount-input { text-align: right; }

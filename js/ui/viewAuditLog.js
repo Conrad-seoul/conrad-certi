@@ -33,9 +33,9 @@ CertApp.viewAuditLog = (function () {
     var filterRow = ui.el('div', { class: 'panel controls-row controls-row-tight' }, [
       ui.el('input', { type: 'text', placeholder: t('al.searchCertNo'), oninput: function (e) { state.search = e.target.value; state.page = 1; renderTable(); } }),
       ui.el('select', { onchange: function (e) { state.action = e.target.value; state.page = 1; renderTable(); } }, actionOptions),
-      ui.el('label', {}, [t('al.tsFrom') + ' ', ui.el('input', { type: 'date', onchange: function (e) { state.tsStart = e.target.value; state.page = 1; renderTable(); } })]),
+      ui.el('label', {}, [t('al.tsFrom') + ' ', ui.dateInput({ onChange: function (v) { state.tsStart = v; state.page = 1; renderTable(); } })]),
       ui.el('span', { text: '~' }),
-      ui.el('input', { type: 'date', onchange: function (e) { state.tsEnd = e.target.value; state.page = 1; renderTable(); } }),
+      ui.dateInput({ onChange: function (v) { state.tsEnd = v; state.page = 1; renderTable(); } }),
       ui.refreshButton()
     ]);
     wrap.appendChild(filterRow);

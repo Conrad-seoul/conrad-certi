@@ -79,12 +79,63 @@ CertApp.displayPaymentType = function (v) {
   return CertApp.PAYMENT_DISPLAY_ALIAS[key] || CertApp.PAYMENT_DISPLAY_ALIAS[key.replace(/\s+/g, '')] || raw;
 };
 
+// Parses a stored YYYY-MM-DD into a *local* midnight Date. Deliberately not `new Date(iso)`,
+// which reads a bare date as UTC midnight and then reports the previous calendar day for
+// timezones behind UTC (same class of bug as CertApp.today() avoids). Returns null when the
+// string isn't a date, so callers can bail instead of doing arithmetic on NaN.
+CertApp.parseLocalDate = function (isoDate) {
+  var m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(isoDate == null ? '' : isoDate).trim());
+  if (!m) return null;
+  var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return isNaN(d.getTime()) ? null : d;
+};
+
 function addYearsIso(isoDate, years) {
-  var d = new Date(isoDate);
+  var d = CertApp.parseLocalDate(isoDate);
+  if (!d) return null;
   d.setFullYear(d.getFullYear() + years);
-  var y = d.getFullYear(), m = ('0' + (d.getMonth() + 1)).slice(-2), day = ('0' + d.getDate()).slice(-2);
-  return y + '-' + m + '-' + day;
+  return CertApp.formatLocalDate(d);
 }
+
+// Normalizes the common ways a date gets typed into the canonical YYYY-MM-DD the ledger stores
+// and compares on: 20260724 / 2026.7.4 / 2026/07/24 all become 2026-07-24. Anything it can't
+// read is returned unchanged so the user sees (and can fix) exactly what they typed.
+CertApp.normalizeDate = function (v) {
+  var s = (v == null ? '' : String(v)).trim();
+  if (!s) return '';
+  var digits = s.replace(/[^\d]/g, '');
+  if (digits.length === 8) return digits.slice(0, 4) + '-' + digits.slice(4, 6) + '-' + digits.slice(6, 8);
+  var m = s.match(/^(\d{4})\D+(\d{1,2})\D+(\d{1,2})$/);
+  if (m) return m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2);
+  return s;
+};
+
+// True only for a real calendar date in canonical form — rejects both malformed text and
+// impossible dates like 2026-02-31 (which Date would silently roll over to March 3).
+CertApp.isValidDate = function (v) {
+  var s = (v == null ? '' : String(v)).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  var d = CertApp.parseLocalDate(s);
+  return !!d && CertApp.formatLocalDate(d) === s;
+};
+
+// A certificate is valid for a whole N-year term counted from its issue date, so the last valid
+// day is the day BEFORE the anniversary: issued 2026-07-30 → expires 2031-07-29, not 07-30.
+// This matches how expiryDate is read everywhere downstream, i.e. as the inclusive last day
+// (usedDate > expiryDate = late use; expiryDate < today = overdue).
+// Gift Certificates run 5 years flat; Service Certificates are nominally 1 year, with late use
+// up to 5 years still possible at 90% value (see accounting.js).
+CertApp.expiryTermYears = function (category) {
+  return CertApp.accounting.isGiftCertificate(category) ? 5 : 1;
+};
+
+CertApp.defaultExpiryDate = function (issuedDate, category) {
+  var anniversary = addYearsIso(issuedDate, CertApp.expiryTermYears(category));
+  if (!anniversary) return null;
+  var d = CertApp.parseLocalDate(anniversary);
+  d.setDate(d.getDate() - 1);
+  return CertApp.formatLocalDate(d);
+};
 
 // Grace Use stays possible up to 5 years from ISSUE date (see accounting.js) — past that, a
 // Service Certificate's write-off (misc income) or unprocessed overdue state is permanent.
@@ -92,7 +143,8 @@ function addYearsIso(isoDate, years) {
 CertApp.isPastGraceWindow = function (rec, asOfDate) {
   asOfDate = asOfDate || CertApp.today();
   if (!rec.issuedDate) return false;
-  return asOfDate >= addYearsIso(rec.issuedDate, 5);
+  var limit = addYearsIso(rec.issuedDate, 5);
+  return !!limit && asOfDate >= limit;
 };
 
 // Context-aware status label: for Service Certificates, distinguishes whether an

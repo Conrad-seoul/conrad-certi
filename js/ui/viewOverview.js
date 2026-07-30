@@ -37,12 +37,12 @@ CertApp.viewOverview = (function () {
 
     var controls = ui.el('div', { class: 'panel controls-row' }, [
       ui.el('label', {}, [t('ov.periodStart') + ' ',
-        ui.el('input', { type: 'date', id: 'ov-period-start', value: state.start })]),
+        ui.dateInput({ id: 'ov-period-start', value: state.start })]),
       ui.el('label', {}, [t('ov.periodEnd') + ' ',
-        ui.el('input', { type: 'date', id: 'ov-period-end', value: state.end })]),
+        ui.dateInput({ id: 'ov-period-end', value: state.end })]),
       ui.el('button', { class: 'btn btn-primary', text: t('common.search'), onclick: function () {
-        state.start = document.getElementById('ov-period-start').value;
-        state.end = document.getElementById('ov-period-end').value;
+        state.start = ui.dateValue(document.getElementById('ov-period-start'));
+        state.end = ui.dateValue(document.getElementById('ov-period-end'));
         renderTable();
       } }),
       ui.refreshButton()

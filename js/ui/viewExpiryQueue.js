@@ -34,7 +34,7 @@ CertApp.viewExpiryQueue = (function () {
     );
 
     var controls = ui.el('div', { class: 'panel controls-row' }, [
-      ui.el('label', {}, [t('eq.asOf') + ' ', ui.el('input', { type: 'date', id: 'eq-asof', value: CertApp.today(), onchange: renderTable })]),
+      ui.el('label', {}, [t('eq.asOf') + ' ', ui.dateInput({ id: 'eq-asof', value: CertApp.today(), onChange: renderTable })]),
       ui.el('button', { class: 'btn btn-primary', id: 'eq-recognize-selected', text: t('eq.recognizeSelected') }),
       ui.el('button', { class: 'btn btn-primary', id: 'eq-recognize-all', text: t('eq.recognizeAll') }),
       ui.refreshButton()
@@ -44,9 +44,9 @@ CertApp.viewExpiryQueue = (function () {
     var filterRow = ui.el('div', { class: 'panel controls-row controls-row-tight' }, [
       ui.el('input', { type: 'text', placeholder: t('eq.searchCertNo'), oninput: function (e) { filters.search = e.target.value; renderTable(); } }),
       ui.el('select', { onchange: function (e) { filters.category = e.target.value; renderTable(); } }, catOptions),
-      ui.el('label', {}, [t('eq.expiryDate') + ' ', ui.el('input', { type: 'date', onchange: function (e) { filters.expiryStart = e.target.value; renderTable(); } })]),
+      ui.el('label', {}, [t('eq.expiryDate') + ' ', ui.dateInput({ onChange: function (v) { filters.expiryStart = v; renderTable(); } })]),
       ui.el('span', { text: '~' }),
-      ui.el('input', { type: 'date', onchange: function (e) { filters.expiryEnd = e.target.value; renderTable(); } })
+      ui.dateInput({ onChange: function (v) { filters.expiryEnd = v; renderTable(); } })
     ]);
     wrap.appendChild(filterRow);
 
@@ -65,9 +65,12 @@ CertApp.viewExpiryQueue = (function () {
     ui.renderUndoBar('eq-undo-bar', refresh);
   }
 
+  // 기준일 is typed (YYYY-MM-DD text — see ui.dateInput), so fall back to today whenever it is
+  // blank *or* half-typed rather than filtering the whole queue against nonsense.
   function asOf() {
     var el = document.getElementById('eq-asof');
-    return (el && el.value) || CertApp.today();
+    var v = el ? ui.dateValue(el) : '';
+    return CertApp.isValidDate(v) ? v : CertApp.today();
   }
 
   function matchesFilters(item) {

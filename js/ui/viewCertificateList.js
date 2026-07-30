@@ -291,14 +291,14 @@ CertApp.viewCertificateList = (function () {
       ]),
       ui.el('span', { text: t('cl.periodBasis') }),
       ui.el('select', { onchange: function (e) { state.periodField = e.target.value; resetFiltersState(); refresh(); } }, periodFieldOptions),
-      ui.el('input', {
-        type: 'date', value: state.periodStart,
-        onchange: function (e) { state.periodStart = e.target.value; resetFiltersState(); refresh(); }
+      ui.dateInput({
+        value: state.periodStart,
+        onChange: function (v) { state.periodStart = v; resetFiltersState(); refresh(); }
       }),
       ui.el('span', { text: '~' }),
-      ui.el('input', {
-        type: 'date', value: state.periodEnd,
-        onchange: function (e) { state.periodEnd = e.target.value; resetFiltersState(); refresh(); }
+      ui.dateInput({
+        value: state.periodEnd,
+        onChange: function (v) { state.periodEnd = v; resetFiltersState(); refresh(); }
       }),
       ui.refreshButton(),
       ui.el('button', { class: 'btn btn-primary', text: t('cl.newIssue'), onclick: toggleBulkIssuePanel })
@@ -329,10 +329,10 @@ CertApp.viewCertificateList = (function () {
 
   // ---------- bulk issue (mini-spreadsheet) ----------
 
+  // Same rule the workflow and the importer use — 발행일 + 1년(SC)/5년(GC), 마지막 유효일이므로
+  // 기념일 하루 전 (2026-07-30 발행 → 2031-07-29 만료). See CertApp.defaultExpiryDate.
   function defaultExpiryFor(category, issuedDate) {
-    var d = new Date(issuedDate);
-    d.setFullYear(d.getFullYear() + (acc.isGiftCertificate(category) ? 5 : 1));
-    return CertApp.formatLocalDate(d);
+    return CertApp.defaultExpiryDate(issuedDate, category) || '';
   }
 
   function defaultAmountFor(category) {
@@ -491,14 +491,10 @@ CertApp.viewCertificateList = (function () {
     return ui.el('div', { class: 'select-other detail-select' }, [select, otherWrap]);
   }
 
-  // Native date field, so 발행일/만료일 can be picked from the calendar instead of typed. The
-  // browser renders it in its own locale, but the underlying value is always YYYY-MM-DD — which
-  // is what we read and store — and this matches the date inputs the rest of the app already
-  // uses (period filters, inline row editing).
+  // 발행일/만료일 in the issue form — the shared YYYY-MM-DD field (see ui.dateInput), same as
+  // every other date box in the app.
   function dateTextInput(value, onChange) {
-    var input = ui.el('input', { type: 'date', value: value || '', class: 'date-text' });
-    input.addEventListener('change', function () { onChange(input.value.trim()); });
-    return input;
+    return ui.dateInput({ value: value, onChange: onChange });
   }
 
   // 연번 자동 생성: builds `qty` bulk-issue rows with the same category/amount/date/payment and
@@ -737,6 +733,13 @@ CertApp.viewCertificateList = (function () {
     var rowsToSubmit = bulkIssueRows.filter(function (r) { return r.certificateNo && r.amountA; });
     if (rowsToSubmit.length === 0) { ui.toast(t('cl.bulkIssue.needFields'), 'warn'); return; }
 
+    // 발행일/만료일 are typed (YYYY-MM-DD), so a mistyped one must be refused here rather than
+    // registered — an unreadable date would silently break the expiry queue and every period filter.
+    var badRow = rowsToSubmit.filter(function (r) {
+      return !CertApp.isValidDate(r.issuedDate) || (r.expiryDate && !CertApp.isValidDate(r.expiryDate));
+    })[0];
+    if (badRow) { ui.toast(t('cl.bulkIssue.badDate', { certNo: badRow.certificateNo }), 'warn'); return; }
+
     // Remember any "기타"-entered service detail under its chosen 대분류, so it appears in that
     // group's dropdown next time (see saveCustomDetail / mergedDetailGroups).
     rowsToSubmit.forEach(function (row) { if (row.certificateDetail) saveCustomDetail(row.category, row._detailGroup, row.certificateDetail); });
@@ -843,34 +846,17 @@ CertApp.viewCertificateList = (function () {
     return input;
   }
 
-  // Normalizes the common ways a date gets typed into the canonical YYYY-MM-DD the ledger stores
-  // and compares on: 20260724 / 2026.7.4 / 2026/07/24 all become 2026-07-24. Anything it can't
-  // read is returned unchanged so the user sees (and can fix) exactly what they typed.
-  function normalizeDateInput(v) {
-    var s = (v || '').trim();
-    if (!s) return '';
-    var digits = s.replace(/[^\d]/g, '');
-    if (digits.length === 8) return digits.slice(0, 4) + '-' + digits.slice(4, 6) + '-' + digits.slice(6, 8);
-    var m = s.match(/^(\d{4})\D+(\d{1,2})\D+(\d{1,2})$/);
-    if (m) return m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2);
-    return s;
-  }
-
-  // Inline date editing uses a plain text field in YYYY-MM-DD rather than <input type=date>, whose
-  // rendering follows the browser locale (mm/dd/yyyy here) and doesn't match the ledger's format.
+  // Inline date editing: the shared YYYY-MM-DD field (see ui.dateInput) wired to the row's
+  // pending-edit record.
   function editableDate(rec, field) {
     if (!unlockedIds[rec.id]) return cellValue(rec, field);
-    var input = ui.el('input', {
-      type: 'text', class: 'date-text', maxlength: '10', placeholder: 'YYYY-MM-DD',
-      value: cellValue(rec, field) || ''
-    });
+    var input = ui.dateInput({ value: cellValue(rec, field) });
     wireEdit(rec, field, input, false);
-    // Normalize on blur/commit so the stored value is always canonical, and keep the pending edit
-    // in sync with what normalization produced.
+    // ui.dateInput normalizes what was typed on commit; mirror that back into the pending edit
+    // so what gets saved is always the canonical form, not the loose text.
     input.addEventListener('change', function () {
-      var norm = normalizeDateInput(input.value);
-      if (norm !== input.value) {
-        input.value = norm;
+      var norm = CertApp.normalizeDate(input.value);
+      if (norm !== cellValue(rec, field)) {
         pendingRowEdits[rec.id] = pendingRowEdits[rec.id] || {};
         pendingRowEdits[rec.id][field] = norm;
         renderBulkToolbar();
@@ -1057,7 +1043,9 @@ CertApp.viewCertificateList = (function () {
     var valueInput = null;
     function renderValueInput() {
       var def = BULK_FIELDS.filter(function (f) { return f.field === fieldSelect.value; })[0] || BULK_FIELDS[0];
-      valueInput = ui.el('input', def.type === 'number' ? { type: 'number', step: '1000' } : { type: def.type });
+      valueInput = def.type === 'date'
+        ? ui.dateInput({})
+        : ui.el('input', def.type === 'number' ? { type: 'number', step: '1000' } : { type: def.type });
       valueHolder.innerHTML = '';
       valueHolder.appendChild(valueInput);
     }
@@ -1081,7 +1069,10 @@ CertApp.viewCertificateList = (function () {
       var reason = noteInput.value.trim();
       if (!reason) { ui.toast(t('cl.saveConfirm.reasonRequired'), 'warn'); noteInput.focus(); return false; }
       var def = BULK_FIELDS.filter(function (f) { return f.field === fieldSelect.value; })[0];
-      var raw = valueInput.value.trim();
+      var raw = def.type === 'date' ? ui.dateValue(valueInput) : valueInput.value.trim();
+      if (def.type === 'date' && raw !== '' && !CertApp.isValidDate(raw)) {
+        ui.toast(t('common.badDate'), 'warn'); valueInput.focus(); return false;
+      }
       // A blank value clears the field (null); numbers go in as numbers so the ledger math works.
       var value = raw === '' ? null : (def.type === 'number' ? Number(raw) : raw);
       rememberEditReason(reason);
@@ -1171,7 +1162,7 @@ CertApp.viewCertificateList = (function () {
       // Misc income posted at use time needs its own posting date — the ledger tracks when the
       // 잡이익 hit the books separately from the use date. Prefilled with today as soon as a
       // non-zero misc amount is entered, and required on save (see the confirm handler).
-      var miscDateInput = ui.el('input', { type: 'date', value: split.arPostingAmountC > 0 ? today : '' });
+      var miscDateInput = ui.dateInput({ value: split.arPostingAmountC > 0 ? today : '' });
       arInput.addEventListener('input', function () {
         if (Number(arInput.value) > 0 && !miscDateInput.value) miscDateInput.value = today;
       });
@@ -1183,7 +1174,7 @@ CertApp.viewCertificateList = (function () {
       // A = B + C + 환불액 still balances.
       var amountInput = ui.el('input', { type: 'number', step: '1000', value: split.outletPostingAmountB });
       var refundInput = ui.el('input', { type: 'number', step: '1000', value: 0 });
-      var refundDateInput = ui.el('input', { type: 'date', value: today });
+      var refundDateInput = ui.dateInput({ value: today });
       var refundDateRow = fieldRow(t('cd.field.refundDate'), refundDateInput);
       var balanceInfo = ui.el('div', { class: 'balance-info' });
 
@@ -1220,7 +1211,7 @@ CertApp.viewCertificateList = (function () {
 
       return {
         rec: rec,
-        usedDateInput: ui.el('input', { type: 'date', value: today }),
+        usedDateInput: ui.dateInput({ value: today }),
         amountInput: amountInput,
         arInput: arInput,
         miscDateInput: miscDateInput,
@@ -1248,11 +1239,12 @@ CertApp.viewCertificateList = (function () {
     // at once ("전체 적용"). Each row stays individually editable below, so a batch can be all-same
     // with one click or fine-tuned per certificate.
     if (recs.length > 1) {
-      var commonDate = ui.el('input', { type: 'date', value: today });
+      var commonDate = ui.dateInput({ value: today });
       var commonBill = ui.el('input', { type: 'text', placeholder: t('cl.bulkUse.billNoPlaceholder') });
       var applyBtn = ui.el('button', { class: 'btn btn-primary', text: t('cl.bulkUse.applyAll'), onclick: function () {
+        var commonDateValue = ui.dateValue(commonDate);
         rowsData.forEach(function (rd) {
-          rd.usedDateInput.value = commonDate.value;
+          rd.usedDateInput.value = commonDateValue;
           rd.billNoInput.value = commonBill.value;
         });
         ui.toast(t('cl.bulkUse.appliedAll', { n: rowsData.length }), 'success');
@@ -1281,19 +1273,30 @@ CertApp.viewCertificateList = (function () {
         missingRefundDate[0].refundDateInput.focus();
         return false;
       }
+      // Dates are typed now (YYYY-MM-DD text, no native picker), so an unreadable one has to be
+      // caught here rather than reaching the ledger as junk.
+      var badDate = null;
+      rowsData.forEach(function (rd) {
+        [rd.usedDateInput, rd.miscDateInput, rd.refundDateInput].forEach(function (inp) {
+          var v = ui.dateValue(inp);
+          if (!badDate && v && !CertApp.isValidDate(v)) badDate = inp;
+        });
+      });
+      if (badDate) { ui.toast(t('common.badDate'), 'warn'); badDate.focus(); return false; }
+
       var inputsById = {};
       rowsData.forEach(function (rd) {
         var refund = Number(rd.refundInput.value) || 0;
         var input = {
-          usedDate: rd.usedDateInput.value,
+          usedDate: ui.dateValue(rd.usedDateInput),
           outletPostingAmountB: Number(rd.amountInput.value),
           arPostingAmountC: Number(rd.arInput.value),
-          miscRevPostingDate: rd.miscDateInput.value || null,
+          miscRevPostingDate: ui.dateValue(rd.miscDateInput) || null,
           billNo: rd.billNoInput.value.trim() || null
         };
         if (refund > 0) {
           input.refundAmount = refund;
-          input.refundDate = rd.refundDateInput.value;
+          input.refundDate = ui.dateValue(rd.refundDateInput);
         }
         inputsById[rd.rec.id] = input;
       });
@@ -1316,7 +1319,7 @@ CertApp.viewCertificateList = (function () {
 
     var today = CertApp.today();
     var reasonName = 'bulk-void-reason';
-    var refundDateInput = ui.el('input', { type: 'date', value: today });
+    var refundDateInput = ui.dateInput({ value: today });
     var misprintRadio = ui.el('input', { type: 'radio', name: reasonName, value: 'MISPRINT', checked: 'checked' });
     var refundRadio = ui.el('input', { type: 'radio', name: reasonName, value: 'REFUND' });
 
@@ -1358,9 +1361,11 @@ CertApp.viewCertificateList = (function () {
       previewEl
     ], function () {
       var reason = refundRadio.checked ? 'REFUND' : 'MISPRINT';
+      var refundDate = ui.dateValue(refundDateInput);
+      if (refundDate && !CertApp.isValidDate(refundDate)) { ui.toast(t('common.badDate'), 'warn'); refundDateInput.focus(); return false; }
       var ids = recs.map(function (r) { return r.id; });
       CertApp.certificateWorkflow.bulkVoidCertificates(ids, {
-        reason: reason, refundDate: refundDateInput.value,
+        reason: reason, refundDate: refundDate,
         applyPenalty: reason === 'REFUND' && penaltyCb.checked
       }).then(function (result) {
         reportBulkResult(result.count, result.errors, t('cl.verb.void'));
@@ -1384,7 +1389,7 @@ CertApp.viewCertificateList = (function () {
     if (recs.length === 0) { ui.toast(t('cl.noneForGrace'), 'warn'); return; }
 
     var today = CertApp.today();
-    var graceDateInput = ui.el('input', { type: 'date', value: today });
+    var graceDateInput = ui.dateInput({ value: today });
 
     // Per-certificate 비고/특이사항, pre-filled with what the record already carries (e.g.
     // "To Revenue on 20221231") so the existing note is visible and can be corrected in the same
@@ -1410,6 +1415,8 @@ CertApp.viewCertificateList = (function () {
     });
 
     ui.openModal(t('cl.bulkGrace.title', { n: recs.length }), body, function () {
+      var graceDate = ui.dateValue(graceDateInput);
+      if (!CertApp.isValidDate(graceDate)) { ui.toast(t('common.badDate'), 'warn'); graceDateInput.focus(); return false; }
       var ids = recs.map(function (r) { return r.id; });
       var byId = {};
       rowsData.forEach(function (rd) {
@@ -1418,7 +1425,7 @@ CertApp.viewCertificateList = (function () {
           discountReceiptNote: rd.noteInput.value.trim() || null
         };
       });
-      CertApp.certificateWorkflow.bulkGraceUseExpired(ids, { graceUseDate: graceDateInput.value, byId: byId }).then(function (result) {
+      CertApp.certificateWorkflow.bulkGraceUseExpired(ids, { graceUseDate: graceDate, byId: byId }).then(function (result) {
         reportBulkResult(result.results.length, result.errors, t('cl.verb.grace'));
         selectedIds = {};
         refresh();

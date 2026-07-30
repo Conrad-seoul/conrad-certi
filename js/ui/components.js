@@ -17,8 +17,8 @@ CertApp.ui.formatDate = function (isoDate) {
 
 // Shared default period across Overview and Certificate List: cleared (no filter) by
 // default — computeSummary treats an empty start/end as unbounded on that side (see
-// calculationEngine.js). Native date inputs still open their picker on the current month
-// when empty, so "today" is one click away without forcing a default range on load.
+// calculationEngine.js), so the list opens on everything rather than a range the user
+// didn't ask for.
 CertApp.ui.defaultPeriod = function () {
   return { start: '', end: '' };
 };
@@ -39,6 +39,37 @@ CertApp.ui.el = function (tag, attrs, children) {
     node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
   });
   return node;
+};
+
+// The app's one date field. A plain text box in YYYY-MM-DD rather than <input type="date">,
+// whose rendering follows the browser locale (mm/dd/yyyy on these PCs) and so contradicted the
+// YYYY-MM-DD the ledger stores, exports and compares on — the same reason inline row editing
+// already used text. Typing is forgiving (20260730 / 2026.7.30 / 2026/07/30 all normalize on
+// commit, see CertApp.normalizeDate); an unparseable entry is flagged red instead of silently
+// travelling on, since a text box has none of the native picker's validation.
+//   opts: { value, onChange(normalizedValue), id, class, style, title }
+CertApp.ui.dateInput = function (opts) {
+  opts = opts || {};
+  var attrs = {
+    type: 'text', class: 'date-text' + (opts.class ? ' ' + opts.class : ''),
+    maxlength: '10', placeholder: 'YYYY-MM-DD', inputmode: 'numeric', autocomplete: 'off',
+    value: opts.value || '', id: opts.id || null, style: opts.style || null, title: opts.title || null
+  };
+  var input = CertApp.ui.el('input', attrs);
+  input.addEventListener('change', function () {
+    var norm = CertApp.normalizeDate(input.value);
+    if (norm !== input.value) input.value = norm;
+    input.classList.toggle('date-invalid', norm !== '' && !CertApp.isValidDate(norm));
+    if (opts.onChange) opts.onChange(norm);
+  });
+  return input;
+};
+
+// Reads a date field's current text as a canonical YYYY-MM-DD. Use this instead of `.value`
+// wherever a value is pulled at confirm/search time rather than through onChange, so a date
+// typed loosely and submitted straight away still lands normalized.
+CertApp.ui.dateValue = function (input) {
+  return CertApp.normalizeDate(input.value);
 };
 
 CertApp.ui.toast = function (message, kind) {
@@ -303,7 +334,7 @@ CertApp.ui.renderLogoutLink = function () {
 CertApp.ui.openExtendModal = function (rec, onDone) {
   var ui = CertApp.ui, t = CertApp.i18n.t;
   var d = new Date(); d.setFullYear(d.getFullYear() + 1);
-  var newDateInput = ui.el('input', { type: 'date', value: CertApp.formatLocalDate(d) });
+  var newDateInput = ui.dateInput({ value: CertApp.formatLocalDate(d) });
   var approvalInput = ui.el('input', { type: 'text', placeholder: t('eq.extend.approvalPlaceholder') });
   ui.openModal(t('eq.extend.title', { certNo: rec.certificateNo }), [
     ui.el('div', { class: 'muted', style: 'margin-bottom:12px' }, [t('eq.extend.desc')]),
@@ -316,7 +347,9 @@ CertApp.ui.openExtendModal = function (rec, onDone) {
   ], function () {
     var approvalNo = approvalInput.value.trim();
     if (!approvalNo) { ui.toast(t('eq.extend.needApproval'), 'warn'); return false; }
-    CertApp.certificateWorkflow.extendExpiry(rec.id, { newExpiryDate: newDateInput.value, approvalNo: approvalNo }).then(function () {
+    var newExpiry = ui.dateValue(newDateInput);
+    if (!CertApp.isValidDate(newExpiry)) { ui.toast(t('common.badDate'), 'warn'); newDateInput.focus(); return false; }
+    CertApp.certificateWorkflow.extendExpiry(rec.id, { newExpiryDate: newExpiry, approvalNo: approvalNo }).then(function () {
       ui.toast('1' + t('eq.extend.done'), 'success');
       if (onDone) onDone();
     }).catch(function (err) { ui.toast(err.message, 'error'); });
