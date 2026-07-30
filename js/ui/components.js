@@ -41,35 +41,80 @@ CertApp.ui.el = function (tag, attrs, children) {
   return node;
 };
 
-// The app's one date field. A plain text box in YYYY-MM-DD rather than <input type="date">,
-// whose rendering follows the browser locale (mm/dd/yyyy on these PCs) and so contradicted the
-// YYYY-MM-DD the ledger stores, exports and compares on — the same reason inline row editing
-// already used text. Typing is forgiving (20260730 / 2026.7.30 / 2026/07/30 all normalize on
-// commit, see CertApp.normalizeDate); an unparseable entry is flagged red instead of silently
-// travelling on, since a text box has none of the native picker's validation.
+// The app's one date field: a YYYY-MM-DD text box plus a 📅 button that opens the browser's own
+// calendar. It is not an <input type="date"> because that control renders in the browser's locale
+// (mm/dd/yyyy on these PCs) and cannot be told otherwise, which contradicted the YYYY-MM-DD the
+// ledger stores, exports and compares on. The calendar therefore lives on a hidden type=date
+// proxy: the picker still does the picking, the text box still owns the format.
+// Typing is forgiving (20260730 / 2026.7.30 / 2026/07/30 all normalize on commit — see
+// CertApp.normalizeDate); an unreadable entry is flagged red rather than travelling on silently,
+// since a text box has none of the native control's validation.
+//
+// Returns the WRAPPER element, not the input — reach the text inside with ui.dateValue(el) /
+// ui.setDateValue(el, v); el.focus() is forwarded for you.
 //   opts: { value, onChange(normalizedValue), id, class, style, title }
 CertApp.ui.dateInput = function (opts) {
   opts = opts || {};
-  var attrs = {
-    type: 'text', class: 'date-text' + (opts.class ? ' ' + opts.class : ''),
-    maxlength: '10', placeholder: 'YYYY-MM-DD', inputmode: 'numeric', autocomplete: 'off',
-    value: opts.value || '', id: opts.id || null, style: opts.style || null, title: opts.title || null
-  };
-  var input = CertApp.ui.el('input', attrs);
-  input.addEventListener('change', function () {
+  var input = CertApp.ui.el('input', {
+    type: 'text', class: 'date-text', maxlength: '10', placeholder: 'YYYY-MM-DD',
+    inputmode: 'numeric', autocomplete: 'off', value: opts.value || ''
+  });
+
+  function commit() {
     var norm = CertApp.normalizeDate(input.value);
     if (norm !== input.value) input.value = norm;
     input.classList.toggle('date-invalid', norm !== '' && !CertApp.isValidDate(norm));
     if (opts.onChange) opts.onChange(norm);
+  }
+  input.addEventListener('change', commit);
+
+  // showPicker() requires an element that is being rendered, so the proxy is transparent rather
+  // than display:none, and ignores pointer events so clicks land on the button in front of it.
+  var proxy = CertApp.ui.el('input', { type: 'date', class: 'date-pick-proxy', tabindex: '-1', 'aria-hidden': 'true' });
+  proxy.addEventListener('change', function () {
+    if (!proxy.value) return;
+    input.value = proxy.value;   // a native date input's value is always canonical YYYY-MM-DD
+    commit();
   });
-  return input;
+
+  var pickBtn = CertApp.ui.el('button', {
+    type: 'button', class: 'date-pick-btn', text: '📅', title: CertApp.i18n.t('common.pickDate'),
+    onclick: function () {
+      var cur = CertApp.normalizeDate(input.value);
+      proxy.value = CertApp.isValidDate(cur) ? cur : '';   // open on the date already entered
+      // Older browsers have no showPicker(); focusing the proxy at least keeps the click harmless.
+      try { proxy.showPicker(); } catch (e) { proxy.focus(); }
+    }
+  });
+
+  var wrap = CertApp.ui.el('span', {
+    class: 'date-field' + (opts.class ? ' ' + opts.class : ''),
+    id: opts.id || null, style: opts.style || null, title: opts.title || null
+  }, [input, pickBtn, proxy]);
+  wrap._dateText = input;
+  wrap.focus = function () { input.focus(); };
+  return wrap;
 };
 
-// Reads a date field's current text as a canonical YYYY-MM-DD. Use this instead of `.value`
-// wherever a value is pulled at confirm/search time rather than through onChange, so a date
-// typed loosely and submitted straight away still lands normalized.
-CertApp.ui.dateValue = function (input) {
-  return CertApp.normalizeDate(input.value);
+// Reads a date field as a canonical YYYY-MM-DD. Use this instead of `.value` — the element is a
+// wrapper (see ui.dateInput), and it also normalizes a value typed loosely and submitted straight
+// away, before the field's own change handler has tidied it up.
+CertApp.ui.dateValue = function (el) {
+  return CertApp.normalizeDate(CertApp.ui.dateTextEl(el).value);
+};
+
+// Writes a date into a date field (e.g. 전체 적용 copying one date across rows).
+CertApp.ui.setDateValue = function (el, value) {
+  var input = CertApp.ui.dateTextEl(el);
+  input.value = value || '';
+  input.classList.toggle('date-invalid', !!value && !CertApp.isValidDate(value));
+};
+
+// The text box inside a date field. Needed by callers that must hand the actual <input> to
+// something else — inline row editing registers it for per-keystroke pending edits and for
+// programmatic highlighting (see viewCertificateList wireEdit / setFieldWithHighlight).
+CertApp.ui.dateTextEl = function (el) {
+  return el._dateText || el;
 };
 
 CertApp.ui.toast = function (message, kind) {

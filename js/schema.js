@@ -137,6 +137,15 @@ CertApp.defaultExpiryDate = function (issuedDate, category) {
   return CertApp.formatLocalDate(d);
 };
 
+// The rule used before 2026-07-30, which ended the term ON the anniversary and so gave every
+// certificate one day too many. Kept for one reason only: the 만료일 규칙 재계산 maintenance
+// action (정합성 점검) uses it to recognise which stored expiry dates came out of the old rule,
+// so a hand-entered or approval-extended expiry is never mistaken for one of them.
+// See integrityCheck.scanLegacyExpiry.
+CertApp.legacyExpiryDate = function (issuedDate, category) {
+  return addYearsIso(issuedDate, CertApp.expiryTermYears(category));
+};
+
 // Grace Use stays possible up to 5 years from ISSUE date (see accounting.js) — past that, a
 // Service Certificate's write-off (misc income) or unprocessed overdue state is permanent.
 // Meaningless for Gift Certificates, which have no grace-use concept at all.

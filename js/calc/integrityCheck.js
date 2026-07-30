@@ -94,5 +94,35 @@ CertApp.integrityCheck = (function () {
 
   function codes() { return RULES.map(function (r) { return { code: r.code, severity: r.severity }; }); }
 
-  return { run: run, codes: codes };
+  // ---------- 만료일 규칙 재계산 (one-off maintenance scan) ----------
+  // Certificates registered before 2026-07-30 carry an expiry one day too late: the term used to
+  // end ON the N-year anniversary instead of the day before it (see CertApp.defaultExpiryDate).
+  // This finds exactly those rows and nothing else — a row qualifies only when its stored expiry
+  // matches the OLD rule's output to the day, so an expiry that was typed by hand, carried in
+  // from an import file, or granted by an approved extension is left untouched.
+  //
+  // scanLegacyExpiry(records) -> { fixable: [item], review: [item] }
+  //   item = { id, certificateNo, category, status, from, to }
+  function scanLegacyExpiry(records) {
+    records = records || CertApp.cache.certificates;
+    var fixable = [], review = [];
+    records.forEach(function (r) {
+      if (!r.issuedDate || !r.expiryDate) return;
+      if (r.mateApprovalNo) return;                       // expiry deliberately extended, with approval
+      var correct = CertApp.defaultExpiryDate(r.issuedDate, r.category);
+      if (!correct || r.expiryDate === correct) return;    // already right
+      if (r.expiryDate !== CertApp.legacyExpiryDate(r.issuedDate, r.category)) return;  // some other expiry
+      var item = { id: r.id, certificateNo: r.certificateNo, category: r.category,
+        status: r.status, from: r.expiryDate, to: correct };
+      // Pulling the expiry a day earlier turns a use (or 판정 보류) recorded ON the old expiry date
+      // from on-time into late — the one case where this correction would retroactively re-label
+      // money that is already booked. Those few are held back for a person to decide.
+      var terminalDate = r.usedDate || r.graceUseDate;
+      if (terminalDate && terminalDate === r.expiryDate) review.push(item);
+      else fixable.push(item);
+    });
+    return { fixable: fixable, review: review };
+  }
+
+  return { run: run, codes: codes, scanLegacyExpiry: scanLegacyExpiry };
 })();

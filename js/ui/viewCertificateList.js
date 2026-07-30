@@ -846,14 +846,16 @@ CertApp.viewCertificateList = (function () {
     return input;
   }
 
-  // Inline date editing: the shared YYYY-MM-DD field (see ui.dateInput) wired to the row's
-  // pending-edit record.
+  // Inline date editing: the shared YYYY-MM-DD field + calendar button (see ui.dateInput) wired to
+  // the row's pending-edit record. wireEdit gets the text box rather than the wrapper ui.dateInput
+  // returns, since it reads .value per keystroke and setFieldWithHighlight writes to it directly.
   function editableDate(rec, field) {
     if (!unlockedIds[rec.id]) return cellValue(rec, field);
-    var input = ui.dateInput({ value: cellValue(rec, field) });
+    var wrap = ui.dateInput({ value: cellValue(rec, field) });
+    var input = ui.dateTextEl(wrap);
     wireEdit(rec, field, input, false);
-    // ui.dateInput normalizes what was typed on commit; mirror that back into the pending edit
-    // so what gets saved is always the canonical form, not the loose text.
+    // ui.dateInput normalizes what was typed (or picked) on commit; mirror that back into the
+    // pending edit so what gets saved is always the canonical form, not the loose text.
     input.addEventListener('change', function () {
       var norm = CertApp.normalizeDate(input.value);
       if (norm !== cellValue(rec, field)) {
@@ -862,7 +864,7 @@ CertApp.viewCertificateList = (function () {
         renderBulkToolbar();
       }
     });
-    return input;
+    return wrap;
   }
 
   // Sets a field's live input value (if rendered) AND the pending-edit record, and flags it
@@ -1164,7 +1166,7 @@ CertApp.viewCertificateList = (function () {
       // non-zero misc amount is entered, and required on save (see the confirm handler).
       var miscDateInput = ui.dateInput({ value: split.arPostingAmountC > 0 ? today : '' });
       arInput.addEventListener('input', function () {
-        if (Number(arInput.value) > 0 && !miscDateInput.value) miscDateInput.value = today;
+        if (Number(arInput.value) > 0 && !ui.dateValue(miscDateInput)) ui.setDateValue(miscDateInput, today);
       });
 
       // 환불액 is a real, always-visible amount field — a partly-spent 금액권 (guest used 60,000
@@ -1244,7 +1246,7 @@ CertApp.viewCertificateList = (function () {
       var applyBtn = ui.el('button', { class: 'btn btn-primary', text: t('cl.bulkUse.applyAll'), onclick: function () {
         var commonDateValue = ui.dateValue(commonDate);
         rowsData.forEach(function (rd) {
-          rd.usedDateInput.value = commonDateValue;
+          ui.setDateValue(rd.usedDateInput, commonDateValue);
           rd.billNoInput.value = commonBill.value;
         });
         ui.toast(t('cl.bulkUse.appliedAll', { n: rowsData.length }), 'success');
@@ -1261,13 +1263,13 @@ CertApp.viewCertificateList = (function () {
     ui.openModal(t('cl.bulkUse.title', { n: recs.length }), body, function () {
       // A misc-income amount without its posting date would leave the 잡이익 undated in the
       // ledger — block the save and point at the first offending certificate.
-      var missing = rowsData.filter(function (rd) { return Number(rd.arInput.value) > 0 && !rd.miscDateInput.value; });
+      var missing = rowsData.filter(function (rd) { return Number(rd.arInput.value) > 0 && !ui.dateValue(rd.miscDateInput); });
       if (missing.length) {
         ui.toast(t('cl.bulkUse.miscDateRequired', { certNo: missing[0].rec.certificateNo }), 'warn');
         missing[0].miscDateInput.focus();
         return false;
       }
-      var missingRefundDate = rowsData.filter(function (rd) { return Number(rd.refundInput.value) > 0 && !rd.refundDateInput.value; });
+      var missingRefundDate = rowsData.filter(function (rd) { return Number(rd.refundInput.value) > 0 && !ui.dateValue(rd.refundDateInput); });
       if (missingRefundDate.length) {
         ui.toast(t('cl.bulkUse.refundDateRequired', { certNo: missingRefundDate[0].rec.certificateNo }), 'warn');
         missingRefundDate[0].refundDateInput.focus();
@@ -1478,11 +1480,11 @@ CertApp.viewCertificateList = (function () {
         // Unlocked rows edit the raw stored value; locked rows show the canonical label (CA -> Cash).
         return unlockedIds[r.id] ? editableText(r, 'paymentType') : CertApp.displayPaymentType(cellValue(r, 'paymentType'));
       } },
-      Object.assign({ key: 'issuedDate', width: 88, format: function (v, r) { return editableDate(r, 'issuedDate'); } }, sortableHeader(t('cl.col.issuedDate'), 'issuedDate')),
-      Object.assign({ key: 'expiryDate', width: 88, format: function (v, r) { return editableDate(r, 'expiryDate'); } }, sortableHeader(t('cl.col.expiryDate'), 'expiryDate')),
-      Object.assign({ key: 'usedDate', width: 88, format: function (v, r) { return editableDate(r, 'usedDate'); } }, sortableHeader(t('cl.col.usedDate'), 'usedDate')),
+      Object.assign({ key: 'issuedDate', width: 112, format: function (v, r) { return editableDate(r, 'issuedDate'); } }, sortableHeader(t('cl.col.issuedDate'), 'issuedDate')),
+      Object.assign({ key: 'expiryDate', width: 112, format: function (v, r) { return editableDate(r, 'expiryDate'); } }, sortableHeader(t('cl.col.expiryDate'), 'expiryDate')),
+      Object.assign({ key: 'usedDate', width: 112, format: function (v, r) { return editableDate(r, 'usedDate'); } }, sortableHeader(t('cl.col.usedDate'), 'usedDate')),
       Object.assign({ key: 'outletPostingAmountB', width: 94, align: 'right', format: function (v, r) { return editableNumber(r, 'outletPostingAmountB'); } }, sortableHeader(t('cl.col.outletB'), 'outletPostingAmountB')),
-      { key: 'miscRevPostingDate', label: t('cl.col.miscRevDate'), width: 90, format: function (v, r) { return editableDate(r, 'miscRevPostingDate'); } },
+      { key: 'miscRevPostingDate', label: t('cl.col.miscRevDate'), width: 112, format: function (v, r) { return editableDate(r, 'miscRevPostingDate'); } },
       Object.assign({ key: 'arPostingAmountC', width: 90, align: 'right', format: function (v, r) { return editableNumber(r, 'arPostingAmountC'); } }, sortableHeader(t('cl.col.arC'), 'arPostingAmountC')),
       // Sits between 잡이익(C) and 차액 so the row reads as the arithmetic it is: A − B − C − 환불액 = 차액.
       Object.assign({ key: 'refundAmount', width: 90, align: 'right', format: function (v, r) {
@@ -1494,7 +1496,7 @@ CertApp.viewCertificateList = (function () {
       } }, sortableHeader(t('cd.field.refundAmount'), 'refundAmount')),
       // Paired with 환불액(D) the way 매출등록일 is paired with its amount — and it has to be
       // inline-editable here, or the integrity check's "환불일 없음" finding has nowhere to be fixed.
-      { key: 'refundDate', label: t('cd.field.refundDate'), width: 88, format: function (v, r) { return editableDate(r, 'refundDate'); } },
+      { key: 'refundDate', label: t('cd.field.refundDate'), width: 112, format: function (v, r) { return editableDate(r, 'refundDate'); } },
       { key: 'variance', label: t('cl.col.variance'), width: 90, align: 'right', format: function (v, r) {
         // Mirrors accounting.varianceABC, but off the pending-edit values so an unlocked row
         // recomputes live as you type. Refunded cash is an accounted bucket, not a discrepancy.

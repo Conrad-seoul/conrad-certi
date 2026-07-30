@@ -1,53 +1,53 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Certificate Ledger Dashboard</title>
 <link rel="icon" href="favicon.ico" sizes="any">
-<link rel="icon" type="image/svg+xml" href="img/favicon.svg?v=75">
-<link rel="apple-touch-icon" href="img/apple-touch-icon.png?v=75">
-<link rel="stylesheet" href="css/style.css?v=75">
+<link rel="icon" type="image/svg+xml" href="img/favicon.svg?v=76">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png?v=76">
+<link rel="stylesheet" href="css/style.css?v=76">
 </head>
 <body>
 <div id="app">
   <aside id="sidebar">
-    <div class="sidebar-brand" title="개요로 이동 / 새로고침">
+    <div class="sidebar-brand" title="ê°œìš”ë¡œ ì´ë™ / ìƒˆë¡œê³ ì¹¨">
       <img src="img/conrad-logo.png" alt="Conrad Seoul" class="brand-logo">
       <div class="brand-sub">Certificate Ledger</div>
     </div>
     <nav class="sidebar-nav">
       <div class="nav-item" data-view="overview">
         <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg></span>
-        <span data-i18n="nav.overview">개요</span>
+        <span data-i18n="nav.overview">ê°œìš”</span>
       </div>
       <div class="nav-item" data-view="certlist">
         <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path><path d="M9 13h6"></path><path d="M9 17h6"></path></svg></span>
-        <span data-i18n="nav.certlist">증서 목록</span>
+        <span data-i18n="nav.certlist">ì¦ì„œ ëª©ë¡</span>
       </div>
       <div class="nav-item" data-view="expiry">
         <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3.5 2"></path></svg></span>
-        <span data-i18n="nav.expiry">만료 대기열</span>
+        <span data-i18n="nav.expiry">ë§Œë£Œ ëŒ€ê¸°ì—´</span>
       </div>
       <div class="nav-item" data-view="miscrevenue">
         <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></span>
-        <span data-i18n="nav.miscRevenue">잡이익 원장</span>
+        <span data-i18n="nav.miscRevenue">ìž¡ì´ìµ ì›ìž¥</span>
       </div>
       <div class="nav-item" data-view="posting">
         <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"></rect><path d="M8 8h8"></path><path d="M8 12h8"></path><path d="M8 16h5"></path></svg></span>
-        <span data-i18n="nav.posting">마감 요약</span>
+        <span data-i18n="nav.posting">ë§ˆê° ìš”ì•½</span>
       </div>
       <div class="nav-item" data-view="integrity">
         <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"></path><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"></path></svg></span>
-        <span data-i18n="nav.integrity">정합성 점검</span>
+        <span data-i18n="nav.integrity">ì •í•©ì„± ì ê²€</span>
       </div>
       <div class="nav-item" data-view="auditlog">
         <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path><path d="M12 7v5l3 2"></path></svg></span>
-        <span data-i18n="nav.auditLog">감사 로그</span>
+        <span data-i18n="nav.auditLog">ê°ì‚¬ ë¡œê·¸</span>
       </div>
       <div class="nav-item" data-view="importexport">
         <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v14"></path><path d="M3 13l4 4 4-4"></path><path d="M17 21V7"></path><path d="M21 11l-4-4-4 4"></path></svg></span>
-        <span data-i18n="nav.importexport">가져오기/내보내기</span>
+        <span data-i18n="nav.importexport">ê°€ì ¸ì˜¤ê¸°/ë‚´ë³´ë‚´ê¸°</span>
       </div>
     </nav>
     <div class="sidebar-footer">
@@ -58,7 +58,7 @@
       </div>
       <div class="footer-card">
         <div class="footer-title" data-i18n="sidebar.footerTitle">Gift &amp; Service Certificate</div>
-        <div class="footer-sub" data-i18n="sidebar.footerSub">관리 대시보드</div>
+        <div class="footer-sub" data-i18n="sidebar.footerSub">ê´€ë¦¬ ëŒ€ì‹œë³´ë“œ</div>
       </div>
     </div>
   </aside>
@@ -67,34 +67,34 @@
 
 <script src="js/lib/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=75"></script>
-<script src="js/schema.js?v=75"></script>
-<script src="js/i18n.js?v=75"></script>
-<script src="js/operator.js?v=75"></script>
-<script src="js/db.js?v=75"></script>
-<script src="js/db-cloud.js?v=75"></script>
-<script src="js/calc/accounting.js?v=75"></script>
-<script src="js/calc/calculationEngine.js?v=75"></script>
-<script src="js/calc/integrityCheck.js?v=75"></script>
-<script src="js/import/importMapper.js?v=75"></script>
-<script src="js/import/importGiftCertificate.js?v=75"></script>
-<script src="js/import/importServiceCertificate.js?v=75"></script>
-<script src="js/import/importPipeline.js?v=75"></script>
-<script src="js/workflow/certificateWorkflow.js?v=75"></script>
-<script src="js/export/exportWorkbook.js?v=75"></script>
-<script src="js/ui/components.js?v=75"></script>
-<script src="js/auth.js?v=75"></script>
-<script src="js/ui/auditUtil.js?v=75"></script>
-<script src="js/ui/certificateDetail.js?v=75"></script>
-<script src="js/ui/router.js?v=75"></script>
-<script src="js/ui/viewOverview.js?v=75"></script>
-<script src="js/ui/viewCertificateList.js?v=75"></script>
-<script src="js/ui/viewImportExport.js?v=75"></script>
-<script src="js/ui/viewExpiryQueue.js?v=75"></script>
-<script src="js/ui/viewMiscRevenue.js?v=75"></script>
-<script src="js/ui/viewPosting.js?v=75"></script>
-<script src="js/ui/viewIntegrity.js?v=75"></script>
-<script src="js/ui/viewAuditLog.js?v=75"></script>
-<script src="js/app.js?v=75"></script>
+<script src="js/config.js?v=76"></script>
+<script src="js/schema.js?v=76"></script>
+<script src="js/i18n.js?v=76"></script>
+<script src="js/operator.js?v=76"></script>
+<script src="js/db.js?v=76"></script>
+<script src="js/db-cloud.js?v=76"></script>
+<script src="js/calc/accounting.js?v=76"></script>
+<script src="js/calc/calculationEngine.js?v=76"></script>
+<script src="js/calc/integrityCheck.js?v=76"></script>
+<script src="js/import/importMapper.js?v=76"></script>
+<script src="js/import/importGiftCertificate.js?v=76"></script>
+<script src="js/import/importServiceCertificate.js?v=76"></script>
+<script src="js/import/importPipeline.js?v=76"></script>
+<script src="js/workflow/certificateWorkflow.js?v=76"></script>
+<script src="js/export/exportWorkbook.js?v=76"></script>
+<script src="js/ui/components.js?v=76"></script>
+<script src="js/auth.js?v=76"></script>
+<script src="js/ui/auditUtil.js?v=76"></script>
+<script src="js/ui/certificateDetail.js?v=76"></script>
+<script src="js/ui/router.js?v=76"></script>
+<script src="js/ui/viewOverview.js?v=76"></script>
+<script src="js/ui/viewCertificateList.js?v=76"></script>
+<script src="js/ui/viewImportExport.js?v=76"></script>
+<script src="js/ui/viewExpiryQueue.js?v=76"></script>
+<script src="js/ui/viewMiscRevenue.js?v=76"></script>
+<script src="js/ui/viewPosting.js?v=76"></script>
+<script src="js/ui/viewIntegrity.js?v=76"></script>
+<script src="js/ui/viewAuditLog.js?v=76"></script>
+<script src="js/app.js?v=76"></script>
 </body>
 </html>

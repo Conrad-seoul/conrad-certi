@@ -168,9 +168,15 @@ CertApp.certificateWorkflow = (function () {
   }
 
   function findRecord(id) {
-    var rec = CertApp.cache.certificates.find(function (r) { return r.id === id; });
+    var rec = findRecordOrNull(id);
     if (!rec) throw new Error('Certificate not found: ' + id);
     return rec;
+  }
+
+  // Same lookup for callers that skip missing rows instead of failing the whole operation — e.g.
+  // recalcExpiryDates, where another PC may have deleted a record since the scan ran.
+  function findRecordOrNull(id) {
+    return CertApp.cache.certificates.find(function (r) { return r.id === id; }) || null;
   }
 
   function assertTransition(rec, toStatus) {
@@ -724,6 +730,51 @@ CertApp.certificateWorkflow = (function () {
     });
   }
 
+  // recalcExpiryDates([{id, to}], note) -> Promise<{count}>
+  // One-off maintenance behind 정합성 점검 → 만료일 규칙 재계산 (see integrityCheck.scanLegacyExpiry),
+  // rewriting expiryDate on records still carrying the pre-2026-07-30 term rule.
+  //
+  // Deliberately not routed through bulkCorrectRecords, for two reasons:
+  //  - the eligible set can be the whole imported history (~19k rows); one round-trip per record
+  //    each way would be tens of thousands of sequential requests, so this writes via putMany;
+  //  - correctRecord() clears needsReview, which is right when a person edits a row but wrong
+  //    here — a mechanical date fix is not a review of the record.
+  // Cache is updated only after the write succeeds, so a failed request leaves the in-memory
+  // ledger matching the database rather than showing changes that never landed.
+  function recalcExpiryDates(items, note) {
+    return withBatch(function () {
+      var rows = [], audits = [];
+      (items || []).forEach(function (item) {
+        var rec = findRecordOrNull(item.id);
+        if (!rec || !item.to || rec.expiryDate === item.to) return;
+        var next = clone(rec);
+        next.expiryDate = item.to;
+        next.updatedAt = CertApp.nowIso();
+        rows.push(next);
+        // Compact before/after: this action only ever touches expiryDate, and the Audit Log view
+        // loads every entry it can find, so two full record snapshots per row would bloat the log
+        // without recording anything the single-field diff doesn't already show (see auditUtil).
+        audits.push({
+          certificateId: rec.id, certificateNo: rec.certificateNo, ts: CertApp.nowIso(),
+          action: CertApp.AUDIT_ACTION.CORRECT, actor: CertApp.operator.get() || null,
+          note: note || null, batchId: currentBatchId,
+          before: { id: rec.id, certificateNo: rec.certificateNo, expiryDate: rec.expiryDate },
+          after: { id: rec.id, certificateNo: rec.certificateNo, expiryDate: item.to }
+        });
+      });
+      if (!rows.length) return Promise.resolve({ count: 0 });
+      return CertApp.db.putMany('certificates', rows)
+        .then(function () { return CertApp.db.putMany('auditLog', audits); })
+        .then(function () {
+          rows.forEach(function (next) {
+            var i = CertApp.cache.certificates.findIndex(function (r) { return r.id === next.id; });
+            if (i !== -1) CertApp.cache.certificates[i] = next;
+          });
+          return { count: rows.length };
+        });
+    });
+  }
+
   // bulkUseCertificates({id: {usedDate, outletPostingAmountB, arPostingAmountC, billNo}, ...}) -> Promise<{count, errors}>
   function bulkUseCertificates(inputsById) {
     return withBatch(function () {
@@ -942,6 +993,7 @@ CertApp.certificateWorkflow = (function () {
     deleteRecords: deleteRecords,
     undoImportBatch: undoImportBatch,
     bulkCorrectRecords: bulkCorrectRecords,
+    recalcExpiryDates: recalcExpiryDates,
     bulkUseCertificates: bulkUseCertificates,
     bulkVoidCertificates: bulkVoidCertificates,
     bulkIssueCertificates: bulkIssueCertificates,

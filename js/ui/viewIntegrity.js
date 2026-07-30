@@ -33,7 +33,8 @@ CertApp.viewIntegrity = (function () {
     var controls = ui.el('div', { class: 'panel controls-row controls-row-tight' }, [
       ui.el('select', { onchange: function (e) { state.code = e.target.value; renderTable(); } }, codeOptions),
       ui.el('select', { onchange: function (e) { state.severity = e.target.value; renderTable(); } }, sevOptions),
-      ui.refreshButton()
+      ui.refreshButton(),
+      ui.el('button', { class: 'btn', text: t('ic.expiryFix.button'), title: t('ic.expiryFix.desc'), onclick: onRecalcExpiry })
     ]);
     wrap.appendChild(controls);
 
@@ -90,6 +91,60 @@ CertApp.viewIntegrity = (function () {
     ];
     ui.renderTable(wrapEl, columns, rows);
     if (rows.length === 0) wrapEl.appendChild(ui.el('div', { class: 'empty-state', text: t('ic.noneForFilter') }));
+  }
+
+  // 만료일 규칙 재계산: a one-off correction for certificates registered before the term rule was
+  // fixed, which carry an expiry one day too late (see integrityCheck.scanLegacyExpiry). Always
+  // shows the count, a per-status breakdown and sample rows BEFORE writing anything, and requires
+  // a reason that lands on every row's audit entry.
+  function onRecalcExpiry() {
+    var scan = CertApp.integrityCheck.scanLegacyExpiry();
+    if (!scan.fixable.length) {
+      ui.toast(scan.review.length
+        ? t('ic.expiryFix.onlyReview', { n: ui.formatNumber(scan.review.length) })
+        : t('ic.expiryFix.none'), scan.review.length ? 'warn' : 'success');
+      return;
+    }
+
+    var byStatus = {};
+    scan.fixable.forEach(function (i) { byStatus[i.status] = (byStatus[i.status] || 0) + 1; });
+    var statusLine = Object.keys(byStatus).map(function (s) {
+      return CertApp.displayStatusLabel(s) + ' ' + ui.formatNumber(byStatus[s]) + t('common.cases');
+    }).join('  ·  ');
+
+    var body = [
+      ui.el('div', {}, [t('ic.expiryFix.confirmBody', { n: ui.formatNumber(scan.fixable.length) })]),
+      ui.el('div', { class: 'muted', style: 'margin:8px 0 2px;font-size:12px' }, [t('ic.expiryFix.desc')]),
+      ui.el('div', { style: 'margin:10px 0 4px;font-weight:700' }, [statusLine])
+    ];
+    body.push(ui.el('div', { class: 'muted', style: 'margin-top:10px;font-size:12px' }, [t('ic.expiryFix.samples')]));
+    scan.fixable.slice(0, 5).forEach(function (i) {
+      body.push(ui.el('div', { style: 'font-size:12px;padding:1px 0' }, [
+        i.certificateNo + ' · ' + (CertApp.CATEGORY_LABEL[i.category] || i.category) + ':  ' + i.from + '  →  ' + i.to
+      ]));
+    });
+    if (scan.review.length) {
+      body.push(ui.el('div', { class: 'cd-notice', style: 'margin-top:12px' }, [
+        t('ic.expiryFix.reviewWarn', {
+          n: ui.formatNumber(scan.review.length),
+          list: scan.review.slice(0, 10).map(function (i) { return i.certificateNo; }).join(', ')
+        })
+      ]));
+    }
+    var noteInput = ui.el('input', { type: 'text', value: t('ic.expiryFix.defaultNote') });
+    body.push(ui.el('div', { style: 'margin-top:12px' }, [
+      ui.el('label', {}, [t('cl.saveConfirm.noteLabel')]), noteInput
+    ]));
+
+    ui.openModal(t('ic.expiryFix.title'), body, function () {
+      var reason = noteInput.value.trim();
+      if (!reason) { ui.toast(t('cl.saveConfirm.reasonRequired'), 'warn'); noteInput.focus(); return false; }
+      CertApp.certificateWorkflow.recalcExpiryDates(scan.fixable, reason).then(function (result) {
+        ui.toast(t('ic.expiryFix.done', { n: ui.formatNumber(result.count) }), 'success');
+        renderTable();
+        CertApp.router.refresh();
+      }).catch(function (err) { ui.toast(err.message, 'error'); });
+    }, t('ic.expiryFix.confirm'));
   }
 
   function card(label, value, cls) {

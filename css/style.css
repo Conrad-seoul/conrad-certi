@@ -261,11 +261,31 @@ body {
    So a custom package is filed under the right group and remembered for next time. */
 .detail-other { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .detail-group-sel { max-width: 160px; }
-/* Every date field in the app (see ui.dateInput) — a text box holding YYYY-MM-DD, sized for
-   exactly that. .date-invalid marks text that isn't a readable date, since a text box has no
-   native validation of its own. */
-input.date-text { width: 120px; font-variant-numeric: tabular-nums; }
-input.date-text.date-invalid { border-color: var(--danger); background: var(--danger-light); }
+/* Every date field in the app (see ui.dateInput): a YYYY-MM-DD text box + a 📅 button that opens
+   the native calendar on a transparent type=date proxy sitting behind the button (transparent, not
+   hidden, because showPicker() needs a rendered element; pointer-events:none so the button gets
+   the click). .date-invalid marks text that isn't a readable date, since a text box has no native
+   validation of its own. Two-class selectors so the .modal-body input{width:100%} rule doesn't
+   stretch these. */
+.date-field { position: relative; display: inline-flex; align-items: center; }
+.date-field .date-text { width: 120px; padding-right: 26px; font-variant-numeric: tabular-nums; }
+.date-field .date-text.date-invalid { border-color: var(--danger); background: var(--danger-light); }
+/* The calendar button sits INSIDE the text box's right edge (like a native date field's own
+   indicator) so adding it costs no extra width anywhere — including the fixed-width ledger cells. */
+.date-field .date-pick-btn {
+  position: absolute; right: 3px; top: 50%; transform: translateY(-50%);
+  width: 20px; height: 20px; padding: 0; font-size: 12px; line-height: 1;
+  background: none; border: none; border-radius: 5px; cursor: pointer; opacity: 0.55;
+}
+.date-field .date-pick-btn:hover { opacity: 1; background: var(--accent-light); }
+.date-field .date-pick-proxy {
+  position: absolute; right: 0; top: 0; width: 24px; height: 100%;
+  opacity: 0; pointer-events: none; border: none; padding: 0; min-width: 0;
+}
+/* Inline editing in the ledger table: those cells have a fixed width, so the field fills the cell
+   rather than insisting on its own 120px. */
+.data-table .date-field { width: 100%; }
+.data-table .date-field .date-text { width: 100%; min-width: 0; }
 /* New-issue form alignment: 증서번호/발행일/만료일 centered, 금액 right-aligned with commas. */
 input.cert-no-input, input.date-text { text-align: center; }
 input.amount-input { text-align: right; }
