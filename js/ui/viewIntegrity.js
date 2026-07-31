@@ -34,7 +34,8 @@ CertApp.viewIntegrity = (function () {
       ui.el('select', { onchange: function (e) { state.code = e.target.value; renderTable(); } }, codeOptions),
       ui.el('select', { onchange: function (e) { state.severity = e.target.value; renderTable(); } }, sevOptions),
       ui.refreshButton(),
-      ui.el('button', { class: 'btn', text: t('ic.expiryFix.button'), title: t('ic.expiryFix.desc'), onclick: onRecalcExpiry })
+      ui.el('button', { class: 'btn', text: t('ic.expiryFix.button'), title: t('ic.expiryFix.desc'), onclick: onRecalcExpiry }),
+      ui.el('button', { class: 'btn', text: t('ic.writeOffFix.button'), title: t('ic.writeOffFix.desc'), onclick: onReclassifyWriteOffs })
     ]);
     wrap.appendChild(controls);
 
@@ -145,6 +146,57 @@ CertApp.viewIntegrity = (function () {
         CertApp.router.refresh();
       }).catch(function (err) { ui.toast(err.message, 'error'); });
     }, t('ic.expiryFix.confirm'));
+  }
+
+  // 잡이익 전환 재분류: year-end write-offs that an older importer stored as redemptions, with the
+  // money left in real outlet revenue. Same shape as the recalculation above — count, breakdown,
+  // samples and an audit reason before anything is written.
+  function onReclassifyWriteOffs() {
+    var items = CertApp.integrityCheck.scanMisbookedWriteOffs();
+    if (!items.length) { ui.toast(t('ic.writeOffFix.none'), 'success'); return; }
+
+    var byCat = {}, total = 0, finalCount = 0;
+    items.forEach(function (i) {
+      byCat[i.category] = (byCat[i.category] || 0) + 1;
+      total += i.amountA || 0;
+      if (i.isFinal) finalCount++;
+    });
+    var catLine = Object.keys(byCat).map(function (c) {
+      return (CertApp.CATEGORY_LABEL[c] || c) + ' ' + ui.formatNumber(byCat[c]) + t('common.cases');
+    }).join('  ·  ');
+
+    var body = [
+      ui.el('div', {}, [t('ic.writeOffFix.confirmBody', {
+        n: ui.formatNumber(items.length), amount: ui.formatCurrency(total)
+      })]),
+      ui.el('div', { class: 'muted', style: 'margin:8px 0 2px;font-size:12px' }, [t('ic.writeOffFix.desc')]),
+      ui.el('div', { style: 'margin:10px 0 4px;font-weight:700' }, [catLine]),
+      ui.el('div', { style: 'margin:2px 0 4px' }, [t('ic.writeOffFix.labelSplit', {
+        income: ui.formatNumber(items.length - finalCount), final: ui.formatNumber(finalCount)
+      })])
+    ];
+    body.push(ui.el('div', { class: 'muted', style: 'margin-top:10px;font-size:12px' }, [t('ic.expiryFix.samples')]));
+    items.slice(0, 5).forEach(function (i) {
+      body.push(ui.el('div', { style: 'font-size:12px;padding:1px 0' }, [
+        i.certificateNo + ' · ' + t('cl.col.outletB') + ' ' + ui.formatCurrency(i.fromB) +
+        '  →  ' + t('cl.col.arC') + ' ' + ui.formatCurrency(i.arPostingAmountC) +
+        '  (' + (i.isFinal ? 'MISC (FINAL)' : 'MISC INCOME') + ')'
+      ]));
+    });
+    var noteInput = ui.el('input', { type: 'text', value: t('ic.writeOffFix.defaultNote') });
+    body.push(ui.el('div', { style: 'margin-top:12px' }, [
+      ui.el('label', {}, [t('cl.saveConfirm.noteLabel')]), noteInput
+    ]));
+
+    ui.openModal(t('ic.writeOffFix.title'), body, function () {
+      var reason = noteInput.value.trim();
+      if (!reason) { ui.toast(t('cl.saveConfirm.reasonRequired'), 'warn'); noteInput.focus(); return false; }
+      CertApp.certificateWorkflow.reclassifyWriteOffs(items, reason).then(function (result) {
+        ui.toast(t('ic.writeOffFix.done', { n: ui.formatNumber(result.count) }), 'success');
+        renderTable();
+        CertApp.router.refresh();
+      }).catch(function (err) { ui.toast(err.message, 'error'); });
+    }, t('ic.writeOffFix.confirm'));
   }
 
   function card(label, value, cls) {

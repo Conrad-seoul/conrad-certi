@@ -88,6 +88,14 @@ CertApp.importPipeline = (function () {
     // misc-income penalty (C > 0) and was used after expiry; otherwise it's a plain USED.
     if (hasCheckNumber && (hasOutletRevenue || mapped.usedDate)) return { status: CertApp.STATUS.USED, voidReason: null, needsReview: false };
 
+    // Mirror image, and the next strongest signal: a recognition note with NO check number is the
+    // year-end write-off sweep, whatever else the row carries. It has to outrank both the source's
+    // own "USED" status and the amount/date inference further down, because the sweep also posts
+    // the amount to the revenue column and stamps a used date — that date is the sweep date, not a
+    // redemption. Reading it as a use is what left 232 Pulse 8 / F&B rows booked as revenue
+    // instead of misc income (repairable via 정합성 점검 → 잡이익 전환 재분류).
+    if (recognitionNote && !hasCheckNumber) return { status: CertApp.STATUS.EXPIRED_RECOGNIZED, voidReason: null, needsReview: false };
+
     // Explicit source Status wins next. "USED" is a real redemption; "EXPIRED" with money already
     // posted is a completed write-off, but with nothing posted yet it's still outstanding (virtual
     // EXPIRED_PENDING).
@@ -97,11 +105,10 @@ CertApp.importPipeline = (function () {
       return { status: CertApp.STATUS.ACTIVE, voidReason: null, needsReview: false };
     }
 
-    // Blank / unrecognized source status — infer from what was posted. A real redemption (outlet
-    // revenue posted with an actual Used Date) is a USE; only a recognition note without any
-    // redemption evidence is a genuine year-end write-off.
+    // Blank / unrecognized source status — infer from what was posted. A real redemption posts
+    // outlet revenue with an actual Used Date. (Rows carrying a recognition note never reach here:
+    // they were classified as a write-off above.)
     if (hasOutletRevenue && mapped.usedDate) return { status: CertApp.STATUS.USED, voidReason: null, needsReview: false };
-    if (recognitionNote) return { status: CertApp.STATUS.EXPIRED_RECOGNIZED, voidReason: null, needsReview: false };
     if (hasOutletRevenue) return { status: CertApp.STATUS.USED, voidReason: null, needsReview: false };
     if (hasCposting && reconciled) return { status: CertApp.STATUS.EXPIRED_RECOGNIZED, voidReason: null, needsReview: false };
     if (mapped.usedDate) {
@@ -221,6 +228,21 @@ CertApp.importPipeline = (function () {
       graceUseDate = effectiveUsedDate;
     }
 
+    // An unclaimed certificate written off at year-end is 100% misc income — nothing was ever
+    // delivered against it (see accounting.computeWriteOffSplit). The source files book that sweep
+    // in the revenue column, so move it here rather than importing real outlet revenue that never
+    // happened (which the recognized_revenue integrity rule would then flag on every such row).
+    var outletB = mapped.outletPostingAmountB !== undefined ? mapped.outletPostingAmountB : null;
+    var arC = mapped.arPostingAmountC !== undefined ? mapped.arPostingAmountC : null;
+    var miscDate = mapped.miscRevPostingDate || null;
+    if (status === CertApp.STATUS.EXPIRED_RECOGNIZED && (outletB || 0) > 0 && !(arC || 0) &&
+      (mapped.amountA || 0) > 0) {
+      var writeOff = CertApp.accounting.computeWriteOffSplit(mapped.amountA, mapped.category);
+      outletB = writeOff.outletPostingAmountB;
+      arC = writeOff.arPostingAmountC;
+      miscDate = miscDate || extractDateFromNote(mapped.billNo, null) || effectiveUsedDate || null;
+    }
+
     return {
       id: CertApp.uuid(),
       category: mapped.category,
@@ -233,9 +255,9 @@ CertApp.importPipeline = (function () {
       paymentType: mapped.paymentType || null,
       certificateDetail: mapped.certificateDetail || null,
       usedDate: effectiveUsedDate || null,
-      outletPostingAmountB: mapped.outletPostingAmountB !== undefined ? mapped.outletPostingAmountB : null,
-      miscRevPostingDate: mapped.miscRevPostingDate || null,
-      arPostingAmountC: mapped.arPostingAmountC !== undefined ? mapped.arPostingAmountC : null,
+      outletPostingAmountB: outletB,
+      miscRevPostingDate: miscDate,
+      arPostingAmountC: arC,
       // Normalize Bill No. to a string (some source rows carry a bare numeric check/room number)
       // so every downstream string operation (search, reclassify's .toUpperCase()) is safe.
       billNo: (mapped.billNo === null || mapped.billNo === undefined || mapped.billNo === '') ? null : String(mapped.billNo),

@@ -730,36 +730,44 @@ CertApp.certificateWorkflow = (function () {
     });
   }
 
-  // recalcExpiryDates([{id, to}], note) -> Promise<{count}>
-  // One-off maintenance behind 정합성 점검 → 만료일 규칙 재계산 (see integrityCheck.scanLegacyExpiry),
-  // rewriting expiryDate on records still carrying the pre-2026-07-30 term rule.
+  // applyBulkPatch([{id, patch}], note) -> Promise<{count}>
+  // Shared writer for the one-off repairs in 정합성 점검 (만료일 규칙 재계산, 잡이익 전환 재분류).
   //
   // Deliberately not routed through bulkCorrectRecords, for two reasons:
-  //  - the eligible set can be the whole imported history (~19k rows); one round-trip per record
+  //  - an eligible set can be the whole imported history (~19k rows); one round-trip per record
   //    each way would be tens of thousands of sequential requests, so this writes via putMany;
   //  - correctRecord() clears needsReview, which is right when a person edits a row but wrong
-  //    here — a mechanical date fix is not a review of the record.
+  //    here — a mechanical repair is not a review of the record.
+  // Like correctRecord it bypasses the lifecycle state machine on purpose: these repairs fix what
+  // a record always should have been, they are not new business events.
   // Cache is updated only after the write succeeds, so a failed request leaves the in-memory
   // ledger matching the database rather than showing changes that never landed.
-  function recalcExpiryDates(items, note) {
+  function applyBulkPatch(items, note) {
     return withBatch(function () {
       var rows = [], audits = [];
       (items || []).forEach(function (item) {
         var rec = findRecordOrNull(item.id);
-        if (!rec || !item.to || rec.expiryDate === item.to) return;
+        if (!rec) return;
+        var fields = Object.keys(item.patch).filter(function (f) { return rec[f] !== item.patch[f]; });
+        if (!fields.length) return;
         var next = clone(rec);
-        next.expiryDate = item.to;
+        // Compact before/after — only the fields this repair touches, plus the identity the audit
+        // views key on. The Audit Log view loads every entry it can find, so two full record
+        // snapshots per row would bloat the log without recording anything the field-by-field
+        // diff doesn't already show (see auditUtil.diffFields).
+        var before = { id: rec.id, certificateNo: rec.certificateNo };
+        var after = { id: rec.id, certificateNo: rec.certificateNo };
+        fields.forEach(function (f) {
+          before[f] = rec[f];
+          after[f] = item.patch[f];
+          next[f] = item.patch[f];
+        });
         next.updatedAt = CertApp.nowIso();
         rows.push(next);
-        // Compact before/after: this action only ever touches expiryDate, and the Audit Log view
-        // loads every entry it can find, so two full record snapshots per row would bloat the log
-        // without recording anything the single-field diff doesn't already show (see auditUtil).
         audits.push({
           certificateId: rec.id, certificateNo: rec.certificateNo, ts: CertApp.nowIso(),
           action: CertApp.AUDIT_ACTION.CORRECT, actor: CertApp.operator.get() || null,
-          note: note || null, batchId: currentBatchId,
-          before: { id: rec.id, certificateNo: rec.certificateNo, expiryDate: rec.expiryDate },
-          after: { id: rec.id, certificateNo: rec.certificateNo, expiryDate: item.to }
+          note: note || null, batchId: currentBatchId, before: before, after: after
         });
       });
       if (!rows.length) return Promise.resolve({ count: 0 });
@@ -773,6 +781,30 @@ CertApp.certificateWorkflow = (function () {
           return { count: rows.length };
         });
     });
+  }
+
+  // recalcExpiryDates([{id, to}], note) — 만료일 규칙 재계산: rewrites expiryDate on records still
+  // carrying the pre-2026-07-30 term rule (see integrityCheck.scanLegacyExpiry).
+  function recalcExpiryDates(items, note) {
+    return applyBulkPatch((items || []).map(function (i) {
+      return { id: i.id, patch: { expiryDate: i.to } };
+    }), note);
+  }
+
+  // reclassifyWriteOffs(items, note) — 잡이익 전환 재분류: moves a year-end sweep that was stored as
+  // a redemption into misc income, 100% in AR Posting (C) per accounting.computeWriteOffSplit (see
+  // integrityCheck.scanMisbookedWriteOffs). usedDate is deliberately left as it is: on these rows
+  // it holds the write-off date, which point-in-time balance reconstruction needs to close the
+  // certificate in the right period (see calculationEngine.effectiveStatusAsOf).
+  function reclassifyWriteOffs(items, note) {
+    return applyBulkPatch((items || []).map(function (i) {
+      return { id: i.id, patch: {
+        status: CertApp.STATUS.EXPIRED_RECOGNIZED,
+        outletPostingAmountB: i.outletPostingAmountB,
+        arPostingAmountC: i.arPostingAmountC,
+        miscRevPostingDate: i.miscRevPostingDate
+      } };
+    }), note);
   }
 
   // bulkUseCertificates({id: {usedDate, outletPostingAmountB, arPostingAmountC, billNo}, ...}) -> Promise<{count, errors}>
@@ -994,6 +1026,7 @@ CertApp.certificateWorkflow = (function () {
     undoImportBatch: undoImportBatch,
     bulkCorrectRecords: bulkCorrectRecords,
     recalcExpiryDates: recalcExpiryDates,
+    reclassifyWriteOffs: reclassifyWriteOffs,
     bulkUseCertificates: bulkUseCertificates,
     bulkVoidCertificates: bulkVoidCertificates,
     bulkIssueCertificates: bulkIssueCertificates,

@@ -124,5 +124,54 @@ CertApp.integrityCheck = (function () {
     return { fixable: fixable, review: review };
   }
 
-  return { run: run, codes: codes, scanLegacyExpiry: scanLegacyExpiry };
+  // ---------- 잡이익 전환 재분류 (one-off maintenance scan) ----------
+  // The year-end sweep note ("To Revenue on 20211231") and the "a customer really redeemed this"
+  // signal (a check number), exactly as the importer reads them — see importPipeline.deriveStatus.
+  var RECOGNITION_NOTE = /TO\s*REVENUE|MISC\s*REV|RECOGNI[SZ]E|TO\s*MISC/;
+  var CHECK_NUMBER = /CHK\s*\d/;
+
+  // The write-off date the sweep note carries ("To Revenue on 20211231" -> 2021-12-31), used as
+  // the misc-income posting date so the 잡이익 원장 lands in the period the write-off belongs to.
+  function writeOffDateFromNote(note) {
+    var m = /(20\d{2})(\d{2})(\d{2})/.exec(note || '');
+    if (!m || m[2] < '01' || m[2] > '12' || m[3] < '01' || m[3] > '31') return null;
+    return m[1] + '-' + m[2] + '-' + m[3];
+  }
+
+  // Certificates closed by the year-end sweep but stored as a redemption with the money sitting in
+  // real outlet revenue (B) — an older importer read "amount posted + a used date" as a use, even
+  // though that date is just the sweep date. They belong in misc income: status
+  // EXPIRED_RECOGNIZED with 100% in AR Posting (C), which also makes the badge read MISC INCOME
+  // while the 5-year Grace Use window is open and MISC (FINAL) once it has passed — derived from
+  // the issue date at display time (see CertApp.displayStatusLabelForRecord), never stored, so it
+  // stays right as time passes.
+  // Rows carrying a check number are genuine redemptions and are deliberately left alone — the
+  // mirror image of certificateWorkflow.reclassifyMisimportedExpiries, which repairs the opposite
+  // mistake (a real redemption stored as a write-off).
+  //
+  // scanMisbookedWriteOffs(records) -> [{ id, certificateNo, category, issuedDate, amountA,
+  //   fromB, outletPostingAmountB, arPostingAmountC, miscRevPostingDate, isFinal }]
+  function scanMisbookedWriteOffs(records) {
+    records = records || CertApp.cache.certificates;
+    var out = [];
+    records.forEach(function (r) {
+      if (r.status !== STATUS.USED) return;
+      var note = String(r.billNo || '').toUpperCase();
+      if (!RECOGNITION_NOTE.test(note) || CHECK_NUMBER.test(note)) return;
+      if (!(num(r.outletPostingAmountB) > 0)) return;
+      var split = acc().computeWriteOffSplit(r.amountA, r.category);
+      out.push({
+        id: r.id, certificateNo: r.certificateNo, category: r.category,
+        issuedDate: r.issuedDate, amountA: r.amountA,
+        fromB: r.outletPostingAmountB,
+        outletPostingAmountB: split.outletPostingAmountB,
+        arPostingAmountC: split.arPostingAmountC,
+        miscRevPostingDate: r.miscRevPostingDate || writeOffDateFromNote(note) || r.usedDate || null,
+        isFinal: CertApp.isPastGraceWindow(r)
+      });
+    });
+    return out;
+  }
+
+  return { run: run, codes: codes, scanLegacyExpiry: scanLegacyExpiry, scanMisbookedWriteOffs: scanMisbookedWriteOffs };
 })();
