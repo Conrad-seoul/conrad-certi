@@ -445,11 +445,14 @@ input.amount-input { text-align: right; }
 /* guide view: each topic panel gets a colored tag reusing the existing status-badge palette
    (no new colors) — 발행=accent, 사용=used-green, 취소/환불=void-red, 만료=pending-amber,
    잡이익환원=grace-teal, 연장=recognized-purple, 정합성/부가=active-blue. */
-/* wide monitors (#view-container has no width cap elsewhere, since data tables want the
-   space) otherwise stretch each panel full-bleed while a short step sentence wraps at
-   ~half that width, leaving a large empty gutter on the right — cap the guide's own
-   reading measure instead of the whole app's. */
-.view-guide { max-width: 860px; }
+/* Keep each guide panel full-bleed (matches every other view — capping the box itself
+   read as the panel "sticking to the left" on a wide monitor), but pad its *content* in
+   from both edges by an amount that grows with the window, so the readable text column
+   centers around ~780px instead of hugging the left edge of a very wide box. */
+.view-guide .panel {
+  padding-left: max(20px, calc((100% - 780px) / 2));
+  padding-right: max(20px, calc((100% - 780px) / 2));
+}
 .view-guide .panel h3 { display: flex; align-items: center; gap: 9px; }
 .guide-tag { display: inline-block; width: 11px; height: 11px; border-radius: 3px; flex: none; }
 .gt-issue.guide-tag, .gt-issue.gsteps li::before { background: var(--accent); border-color: var(--accent); }
