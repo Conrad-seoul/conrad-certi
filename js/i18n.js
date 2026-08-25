@@ -18,7 +18,7 @@ CertApp.i18n = (function () {
       'ps.line.issued': '발행 (액면)', 'ps.line.revenue': '매출 인식 (B)', 'ps.line.writeOff': '잡이익 전환 (만료)',
       'ps.line.refundPenalty': '환불 위약금 (잡이익)', 'ps.line.graceReversal': '잡이익 환원 (매출 반제)',
       'ps.line.refundCash': '환불 현금 (D)', 'ps.line.miscNet': '잡이익 순증감 (합계)',
-      'ps.export': '엑셀 내보내기', 'ps.sheet.summary': '전기요약', 'ps.sheet.category': '종류별', 'ps.fileName': '마감요약_{start}_{end}', 'nav.auditLog': '감사 로그', 'nav.importexport': '가져오기/내보내기',
+      'ps.export': '엑셀 내보내기', 'ps.sheet.summary': '전기요약', 'ps.sheet.category': '종류별', 'ps.fileName': '마감요약_{start}_{end}', 'nav.auditLog': '감사 로그', 'nav.importexport': '가져오기/내보내기', 'nav.guide': '사용자 가이드',
       'ic.desc': '모든 증서를 회계 규칙에 따라 점검해 이상 건을 찾아냅니다. 차액이 맞지 않거나, 만료 인식인데 매출로 잡혀 있거나, 환불인데 환불일이 없는 등 손으로 찾기 어려운 오분개를 한 번에 확인하고 바로 수정으로 연결됩니다.',
       'ic.allChecks': '전체 점검 항목', 'ic.allSeverity': '전체 심각도', 'ic.sev.error': '오류', 'ic.sev.warn': '경고',
       'ic.card.total': '총 이상', 'ic.card.error': '오류', 'ic.card.warn': '경고',
@@ -234,9 +234,14 @@ CertApp.i18n = (function () {
       'ie.reclassify.desc': '사용된 증서의 상태를 현재 기준으로 재정리합니다. ① 잘못 만료전환으로 잡힌 정상 사용(매출 B 있음·전환메모 없음)을 되돌리고, ② 잡이익(C)이 있고 사용일이 유효기간보다 늦은 건은 GRACE_USED, 그 외 사용은 USED로 구분합니다(다시 가져오기 불필요, 되돌리기 가능).',
       'ie.reclassify.button': '잘못 분류된 만료건 정리', 'ie.reclassify.none': '잘못 분류된 만료건이 없습니다.',
       'ie.reclassify.done': '{n}건 정리 완료 (USED {used}건 · GRACE_USED {grace}건).', 'ie.reclassify.note': '사용 상태 재분류 (잡이익 있고 만료 후 사용 → GRACE_USED, 그 외 → USED)', 'ie.reclassify.verb': '재분류',
+
+      'guide.intro': '기능 흐름별로 정리한 사용 가이드입니다. 부서 공용 로그인이라 요청자·승인자 구분은 없고, 담당자 이름만 상단에서 전환합니다.',
+      'guide.issue.title': '발행 (New Issue)', 'guide.redeem.title': '사용 처리 (Redemption)', 'guide.void.title': '취소 / 환불 (Void &amp; Refund)',
+      'guide.expiry.title': '만료 및 소멸 인식 (Expiry &amp; Write-Off)', 'guide.grace.title': '잡이익 환원 (Grace Use)', 'guide.extend.title': '유효기간 연장 (Extend Expiry)',
+      'guide.misc.title': '정합성 점검 · 부가 기능',
     },
     en: {
-      'nav.overview': 'Overview', 'nav.certlist': 'Certificate List', 'nav.expiry': 'Expiry Queue', 'nav.miscRevenue': 'Misc Income', 'nav.posting': 'Close Summary', 'nav.integrity': 'Integrity Check',
+      'nav.overview': 'Overview', 'nav.certlist': 'Certificate List', 'nav.expiry': 'Expiry Queue', 'nav.miscRevenue': 'Misc Income', 'nav.posting': 'Close Summary', 'nav.integrity': 'Integrity Check', 'nav.guide': 'User Guide',
       'ps.desc': 'GL posting summary for the selected period: revenue recognized (B), misc income (write-off / refund penalty / grace reversal), cash refunded, and gross issuance — each placed by its own accounting date. Misc income mirrors the ledger exactly.',
       'ps.periodTitle': 'Posting summary {start} ~ {end}', 'ps.byCategory': 'By category',
       'ps.col.item': 'Item', 'ps.col.qty': 'Count', 'ps.col.amount': 'Amount',
@@ -459,6 +464,11 @@ CertApp.i18n = (function () {
       'ie.reclassify.desc': 'Re-aligns every redeemed record\'s status with the current rules (no re-import needed): (1) records wrongly stored as expiry write-offs (real outlet revenue B posted, no recognition note) are restored to redemptions, and (2) USED vs GRACE_USED is set by timing — a redemption with a misc-income penalty (C > 0) used AFTER expiry becomes GRACE_USED, otherwise USED. Undoable.',
       'ie.reclassify.button': 'Fix misclassified expiries', 'ie.reclassify.none': 'No misclassified expiries found.',
       'ie.reclassify.done': 'Corrected {n} record(s) ({used} USED · {grace} GRACE_USED).', 'ie.reclassify.note': 'Redemption status reclassified (C posted & used after expiry -> GRACE_USED, else USED)', 'ie.reclassify.verb': 'reclassify',
+
+      'guide.intro': 'A guide organized by function flow. This is a shared department login, so there is no requester/approver distinction — only the operator name at the top changes.',
+      'guide.issue.title': 'New Issue', 'guide.redeem.title': 'Redemption', 'guide.void.title': 'Void &amp; Refund',
+      'guide.expiry.title': 'Expiry &amp; Write-Off', 'guide.grace.title': 'Grace Use', 'guide.extend.title': 'Extend Expiry',
+      'guide.misc.title': 'Integrity Check &amp; Other Features',
     }
   };
 

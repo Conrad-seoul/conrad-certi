@@ -27,7 +27,7 @@ CertApp.wireNav = function () {
   }
 };
 
-var REGISTERED_VIEW_NAMES = ['overview', 'certlist', 'expiry', 'miscrevenue', 'posting', 'integrity', 'auditlog', 'importexport'];
+var REGISTERED_VIEW_NAMES = ['overview', 'certlist', 'expiry', 'miscrevenue', 'posting', 'integrity', 'auditlog', 'importexport', 'guide'];
 
 CertApp.registerViews = function () {
   CertApp.router.register('overview', CertApp.viewOverview);
@@ -38,6 +38,7 @@ CertApp.registerViews = function () {
   CertApp.router.register('integrity', CertApp.viewIntegrity);
   CertApp.router.register('auditlog', CertApp.viewAuditLog);
   CertApp.router.register('importexport', CertApp.viewImportExport);
+  CertApp.router.register('guide', CertApp.viewGuide);
 };
 
 function startApp() {
