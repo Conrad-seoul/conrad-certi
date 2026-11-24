@@ -60,8 +60,8 @@ CertApp.viewCertificateList = (function () {
     { group: 'Room Only (2인)', category: 'SC_FB_ROOMS', amount: 1303500, name: 'Executive King Corner Suite', detail: 'Room Only (Executive King Corner Suite)' },
     { group: 'Bed & Breakfast (2인)', category: 'SC_FB_ROOMS', amount: 792000, name: 'Deluxe Room + 조식', detail: 'Bed & Breakfast (Deluxe Room)' },
     { group: 'Bed & Breakfast (2인)', category: 'SC_FB_ROOMS', amount: 847000, name: 'Premium Riverview + 조식', detail: 'Bed & Breakfast (Premium Riverview Room)' },
-    { group: 'F&B (Zest)', category: 'SC_FB_ROOMS', amount: 180000, name: 'Zest 1인', detail: 'Zest - 1 pax' },
-    { group: 'F&B (Zest)', category: 'SC_FB_ROOMS', amount: 360000, name: 'Zest 2인', detail: 'Zest - 2 pax' },
+    { group: 'F&B (Zest)', category: 'SC_FB_ROOMS', amount: 195000, name: 'Zest 1인', detail: 'Zest - 1 pax' },
+    { group: 'F&B (Zest)', category: 'SC_FB_ROOMS', amount: 390000, name: 'Zest 2인', detail: 'Zest - 2 pax' },
     { group: 'Pulse 8', category: 'SC_PULSE8', amount: 55000, name: 'Pulse 8 1Day Pass', detail: 'Pulse 8 1Day Pass' },
     { group: 'Gift Certificate', category: 'GC_100000', amount: 100000, name: 'Cash Voucher (10만원권)', detail: 'Cash Voucher' }
   ];
