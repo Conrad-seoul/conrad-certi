@@ -63,8 +63,40 @@ CertApp.exportWorkbook = (function () {
     sortByCertNo(records).forEach(function (rec, idx) { aoa.push(ledgerRow(rec, idx + 1, includeCertDetail)); });
     var ws = XLSX.utils.aoa_to_sheet(aoa);
     ws['!cols'] = columnWidths(includeCertDetail);
+    // Live Excel formulas (cached values = what the app computed, so the sheet reads correctly
+    // even before Excel recalculates): Variance = A−B−C−D and Used Amount = B+C, identical to
+    // accounting.varianceABC / usedAmountBC. Editing B/C/D in Excel then updates these cells.
+    var t0 = LEDGER_HEADER_BASE.length + (includeCertDetail ? 1 : 0); // first tail column
+    var colA = col(6), colB = col(t0 + 1), colC = col(t0 + 3), colD = col(t0 + 4);
+    for (var r = (headerRows || []).length + 1; r < aoa.length; r++) {
+      var n = r + 1; // 1-based Excel row
+      setFormula(ws, r, t0 + 5, colA + n + '-' + colB + n + '-' + colC + n + '-' + colD + n);
+      setFormula(ws, r, t0 + 6, colB + n + '+' + colC + n);
+    }
     return ws;
   }
+
+  function col(c) { return XLSX.utils.encode_col(c); }
+
+  // Turns an existing cell into a formula cell, keeping its current value as the cached result.
+  function setFormula(ws, r, c, formula) {
+    var addr = XLSX.utils.encode_cell({ r: r, c: c });
+    var cell = ws[addr] || { t: 'n', v: 0 };
+    if (cell.t !== 'n') cell = { t: 'n', v: 0 };
+    cell.f = formula;
+    ws[addr] = cell;
+  }
+
+  // Links the ledger's title-area totals to the Summary sheet, so they always agree with it.
+  // links: [[row, col, summaryColLetter], ...]; summaryRow = that category's 1-based row there.
+  function linkToSummary(ws, links, summaryRow) {
+    links.forEach(function (l) { setFormula(ws, l[0], l[1], "'Summary'!" + l[2] + summaryRow); });
+  }
+  // Summary sheet columns: B Opening Amt, D Issued Amt, F Used Amt, J Void/Refund Amt, L Ending Amt.
+  // Categories start on row 3 (row 1 = period, row 2 = header).
+  var SERVICE_LINKS = [[2, 10, 'F'], [2, 13, 'L'], [2, 14, 'B'], [3, 10, 'D']];
+  var GIFT_LINKS = [[1, 10, 'F'], [2, 10, 'J'], [2, 12, 'L'], [2, 13, 'B'], [3, 10, 'D']];
+  var SPA_LINKS = [[1, 9, 'F'], [2, 9, 'D'], [2, 14, 'L'], [2, 15, 'B']];
 
   function columnWidths(includeCertDetail) {
     var widths = [6, 11, 11, 14, 13, 6, 11, 10]; // No./Issued/Expiry/Status/CertNo/D-C/Amount/Payment
@@ -139,7 +171,12 @@ CertApp.exportWorkbook = (function () {
     var mrAoa = [mrHeader].concat(mrRows.map(function (e) {
       return [dateCell(e.entryDate), e.certificateNo, CertApp.CATEGORY_LABEL[e.category], e.type, e.amount, e.note];
     }));
-    return XLSX.utils.aoa_to_sheet(mrAoa);
+    var total = mrRows.reduce(function (s, e) { return s + (e.amount || 0); }, 0);
+    mrAoa.push([null, null, null, 'Total', total, null]);
+    var ws = XLSX.utils.aoa_to_sheet(mrAoa);
+    var last = mrAoa.length; // 1-based row of the Total line
+    setFormula(ws, last - 1, 4, last > 2 ? 'SUM(E2:E' + (last - 1) + ')' : '0');
+    return ws;
   }
 
   // Reproduces the Gift Certificate ledger's A1:O4 layout: title (A1), "USED DATE" row,
@@ -177,7 +214,10 @@ CertApp.exportWorkbook = (function () {
     });
     aoa.push(['Total', totals.openingAmt, totals.openingQty, totals.issuedAmt, totals.issuedQty,
       totals.usedAmt, totals.usedQty, totals.expiredRevAmt, totals.expiredRevQty, totals.voidAmt, totals.voidQty, totals.endingAmt, totals.endingQty]);
-    return XLSX.utils.aoa_to_sheet(aoa);
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    var totalRow = aoa.length; // 1-based
+    for (var c = 1; c <= 12; c++) setFormula(ws, totalRow - 1, c, 'SUM(' + col(c) + '3:' + col(c) + (totalRow - 1) + ')');
+    return ws;
   }
 
   function currentMonthRange() {
@@ -196,8 +236,12 @@ CertApp.exportWorkbook = (function () {
     var totals100 = periodTotals(period.start, period.end, [CertApp.CATEGORY.GC_100000]);
 
     var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ledgerSheet(gc50, false, giftHeaderRows('<KRW 50,000> Hotel Gift Certificate Status', period.start, period.end, totals50)), '50,000(원장)');
-    XLSX.utils.book_append_sheet(wb, ledgerSheet(gc100, false, giftHeaderRows('<KRW 100,000> Hotel Gift Certificate Status', period.start, period.end, totals100)), '100,000(원장)');
+    var ws50 = ledgerSheet(gc50, false, giftHeaderRows('<KRW 50,000> Hotel Gift Certificate Status', period.start, period.end, totals50));
+    var ws100 = ledgerSheet(gc100, false, giftHeaderRows('<KRW 100,000> Hotel Gift Certificate Status', period.start, period.end, totals100));
+    linkToSummary(ws50, GIFT_LINKS, 3);  // Summary row 3 = GC 50,000
+    linkToSummary(ws100, GIFT_LINKS, 4); // Summary row 4 = GC 100,000
+    XLSX.utils.book_append_sheet(wb, ws50, '50,000(원장)');
+    XLSX.utils.book_append_sheet(wb, ws100, '100,000(원장)');
     XLSX.utils.book_append_sheet(wb, ledgerSheet(gc50.concat(gc100).filter(function (r) { return r.issuedDate >= period.start && r.issuedDate <= period.end; }), false), 'Issued');
     XLSX.utils.book_append_sheet(wb, ledgerSheet(gc50.concat(gc100).filter(function (r) { return r.usedDate && r.usedDate >= period.start && r.usedDate <= period.end; }), false), 'Used');
     XLSX.utils.book_append_sheet(wb, summarySheet(period.start, period.end, [CertApp.CATEGORY.GC_50000, CertApp.CATEGORY.GC_100000]), 'Summary');
@@ -216,7 +260,9 @@ CertApp.exportWorkbook = (function () {
     var totals = periodTotals(period.start, period.end, [cat]);
 
     var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ledgerSheet(sc, true, serviceHeaderRows(period.start, period.end, totals)), '원장(New)');
+    var wsMain = ledgerSheet(sc, true, serviceHeaderRows(period.start, period.end, totals));
+    linkToSummary(wsMain, SERVICE_LINKS, 3); // Summary row 3 = FB & Rooms
+    XLSX.utils.book_append_sheet(wb, wsMain, '원장(New)');
     XLSX.utils.book_append_sheet(wb, ledgerSheet(sc.filter(function (r) { return r.issuedDate >= period.start && r.issuedDate <= period.end; }), true), 'Issued');
     XLSX.utils.book_append_sheet(wb, ledgerSheet(sc.filter(function (r) { return r.usedDate && r.usedDate >= period.start && r.usedDate <= period.end; }), true), 'Used');
     XLSX.utils.book_append_sheet(wb, miscRevenueSheet([cat]), 'Misc revenue');
@@ -242,8 +288,12 @@ CertApp.exportWorkbook = (function () {
 
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, summarySheet(period.start, period.end, cats), 'Summary');
-    XLSX.utils.book_append_sheet(wb, ledgerSheet(spa, true, spaPulse8HeaderRows('Hotel Spa Service Certificate Status', period.start, period.end, spaTotals)), 'SPA');
-    XLSX.utils.book_append_sheet(wb, ledgerSheet(pulse8, true, spaPulse8HeaderRows('Hotel Pulse8 Service Certificate Status', period.start, period.end, pulse8Totals)), 'PULSE8');
+    var wsSpa = ledgerSheet(spa, true, spaPulse8HeaderRows('Hotel Spa Service Certificate Status', period.start, period.end, spaTotals));
+    var wsP8 = ledgerSheet(pulse8, true, spaPulse8HeaderRows('Hotel Pulse8 Service Certificate Status', period.start, period.end, pulse8Totals));
+    linkToSummary(wsSpa, SPA_LINKS, 3); // Summary row 3 = SPA
+    linkToSummary(wsP8, SPA_LINKS, 4);  // Summary row 4 = PULSE8
+    XLSX.utils.book_append_sheet(wb, wsSpa, 'SPA');
+    XLSX.utils.book_append_sheet(wb, wsP8, 'PULSE8');
     XLSX.utils.book_append_sheet(wb, ledgerSheet(both.filter(function (r) { return r.issuedDate >= period.start && r.issuedDate <= period.end; }), true), 'Issued');
     XLSX.utils.book_append_sheet(wb, ledgerSheet(both.filter(function (r) { return r.usedDate && r.usedDate >= period.start && r.usedDate <= period.end; }), true), 'Used');
     XLSX.utils.book_append_sheet(wb, miscRevenueSheet(cats), 'Misc Rev');
