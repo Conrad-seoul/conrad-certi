@@ -29,6 +29,26 @@ CertApp.viewImportExport = (function () {
     var exportPanel = ui.el('div', { class: 'panel' }, [
       ui.el('h3', { text: t('ie.exportTitle') }),
       ui.el('p', { class: 'muted', text: t('ie.exportDesc') }),
+      // All three workbooks in one click. Downloads are spaced ~700ms apart: browsers often
+      // drop or block back-to-back programmatic downloads (Chrome/Edge may ask once to
+      // "allow multiple downloads" for this site).
+      ui.el('button', { class: 'btn btn-primary', onclick: function () {
+        var jobs = [
+          CertApp.exportWorkbook.exportGiftCertificate,
+          CertApp.exportWorkbook.exportServiceCertificate,
+          CertApp.exportWorkbook.exportSpaPulse8
+        ];
+        var failed = [];
+        jobs.forEach(function (job, i) {
+          setTimeout(function () {
+            try { job(); } catch (err) { failed.push(err.message); }
+            if (i === jobs.length - 1) {
+              if (failed.length) ui.toast(t('ie.exportFail') + failed.join(' / '), 'error');
+              else ui.toast(t('ie.exportAllDone'), 'success');
+            }
+          }, i * 700);
+        });
+      } }, [t('ie.exportAll')]),
       ui.el('button', { class: 'btn', onclick: function () {
         try { CertApp.exportWorkbook.exportGiftCertificate(); ui.toast(t('ie.exportGiftDone'), 'success'); }
         catch (err) { ui.toast(t('ie.exportFail') + err.message, 'error'); }
