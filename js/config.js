@@ -43,3 +43,11 @@ CertApp.supabaseClient = function () {
   CertApp._sb = window.supabase.createClient(s.url, s.anonKey);
   return CertApp._sb;
 };
+
+/* Admin mode (see access.js): general users see only 개요 / 증서 목록 / 사용자 가이드. The admin
+   password is stored ONLY as its SHA-256 hex hash. To change it, hash the new password (e.g.
+   in the browser console: crypto.subtle.digest('SHA-256', new TextEncoder().encode('새비밀번호'))
+   then hex-encode) and paste it here. Menu visibility only — not a database security boundary. */
+CertApp.config.admin = {
+  passwordHash: 'eab762a03fd979a04cc4706e6536d382bc89d2d1356afcd054a16b2235ecd471'
+};

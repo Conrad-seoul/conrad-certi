@@ -58,7 +58,7 @@ CertApp.ui.openCertificateDetail = function (certificateId) {
     // shown for USED / VOID / EXPIRED_RECOGNIZED (already-closed) records; extendExpiry also
     // guards this. Lets an expired cert browsed from the Certificate List be extended here,
     // not just from the Expiry Queue.
-    if (!isDeleted && rec.status === CertApp.STATUS.ACTIVE) {
+    if (!isDeleted && rec.status === CertApp.STATUS.ACTIVE && CertApp.access.isAdmin()) {
       body.push(ui.el('div', { class: 'cd-actions' }, [
         ui.el('button', {
           class: 'btn btn-primary btn-small', text: t('eq.extend.button'),

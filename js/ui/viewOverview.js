@@ -45,8 +45,17 @@ CertApp.viewOverview = (function () {
         state.end = ui.dateValue(document.getElementById('ov-period-end'));
         renderTable();
       } }),
-      ui.refreshButton()
+      ui.refreshButton(),
+      // One-page A4 landscape print of this view (see @media print in style.css). The period
+      // inputs are hidden in print, so the print header restates the period being printed.
+      ui.el('button', { class: 'btn', text: t('ov.print'), onclick: function () {
+        state.start = ui.dateValue(document.getElementById('ov-period-start'));
+        state.end = ui.dateValue(document.getElementById('ov-period-end'));
+        renderTable();
+        window.print();
+      } })
     ]);
+    wrap.appendChild(ui.el('div', { class: 'print-only ov-print-header', id: 'ov-print-header' }));
     wrap.appendChild(controls);
 
     var cardsRow = ui.el('div', { class: 'summary-cards', id: 'ov-cards' });
@@ -77,6 +86,16 @@ CertApp.viewOverview = (function () {
     rows.push(Object.assign({ category: t('ov.total'), categoryKey: '', isTotal: true }, totals));
 
     renderGroupedTable(document.getElementById('ov-table-wrap'), rows);
+
+    var ph = document.getElementById('ov-print-header');
+    if (ph) {
+      ph.innerHTML = '';
+      ph.appendChild(ui.el('div', { class: 'ov-print-title', text: 'Conrad Seoul · ' + t('ov.printTitle') }));
+      ph.appendChild(ui.el('div', { class: 'ov-print-meta', text:
+        t('ov.printPeriod') + ': ' + state.start + ' ~ ' + state.end
+        + '   ·   ' + t('ov.printedAt') + ': ' + CertApp.today()
+        + (CertApp.operator.get() ? ' (' + CertApp.operator.get() + ')' : '') }));
+    }
 
     var cardsEl = document.getElementById('ov-cards');
     cardsEl.innerHTML = '';

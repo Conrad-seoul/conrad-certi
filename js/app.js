@@ -50,6 +50,8 @@ function startApp() {
   if (CertApp.loginEnabled && CertApp.loginEnabled()) CertApp.ui.renderLogoutLink();
   CertApp.registerViews();
   CertApp.wireNav();
+  // Admin mode: hide admin-only menus for general users + render the 관리자 모드 toggle.
+  CertApp.access.apply();
   CertApp.boot().then(function () {
     // Return to whichever tab the user was last on (a real browser reload otherwise always
     // dropped back to Overview/Import), falling back to the original data-driven default
@@ -58,6 +60,7 @@ function startApp() {
     var startView = (lastView && REGISTERED_VIEW_NAMES.indexOf(lastView) !== -1)
       ? lastView
       : (CertApp.cache.certificates.length > 0 ? 'overview' : 'importexport');
+    if (!CertApp.access.canView(startView)) startView = 'overview';
     CertApp.router.go(startView);
 
     // Cloud (Supabase) mode: mirror other PCs' changes into this session in real time. Changes

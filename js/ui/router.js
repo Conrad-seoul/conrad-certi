@@ -11,6 +11,8 @@ CertApp.router = (function () {
 
   function go(name) {
     if (!views[name]) return;
+    // Non-admin users are confined to the general views (see access.js).
+    if (CertApp.access && !CertApp.access.canView(name)) name = 'overview';
     current = name;
     try { localStorage.setItem(LAST_VIEW_KEY, name); } catch (e) {}
     document.querySelectorAll('.nav-item').forEach(function (n) {

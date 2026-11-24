@@ -965,19 +965,22 @@ CertApp.viewCertificateList = (function () {
     var unlockedCount = Object.keys(unlockedIds).length;
     var editCount = Object.keys(pendingRowEdits).length;
 
+    // General users (see access.js) may only issue / use / void-refund; the edit-type actions
+    // (unlock, mark reviewed, bulk field set, grace use, delete) are admin-only.
+    var admin = CertApp.access.isAdmin();
     if (selCount > 0) {
       bar.appendChild(ui.el('span', { class: 'muted', text: t('cl.toolbar.selected', { n: selCount }) }));
-      bar.appendChild(ui.el('button', { class: 'btn', text: t('cl.toolbar.unlock'), onclick: onUnlockSelected }));
+      if (admin) bar.appendChild(ui.el('button', { class: 'btn', text: t('cl.toolbar.unlock'), onclick: onUnlockSelected }));
       // "이상없음 처리" only makes sense while working through the review queue, so it appears
       // only when the 검토 필요 항목만 filter is on — it clears needsReview and nothing else.
-      if (state.needsReviewOnly) {
+      if (admin && state.needsReviewOnly) {
         bar.appendChild(ui.el('button', { class: 'btn', text: t('cl.toolbar.markReviewed'), onclick: onMarkReviewedSelected }));
       }
-      bar.appendChild(ui.el('button', { class: 'btn', text: t('cl.toolbar.bulkField'), onclick: onBulkFieldSet }));
+      if (admin) bar.appendChild(ui.el('button', { class: 'btn', text: t('cl.toolbar.bulkField'), onclick: onBulkFieldSet }));
       bar.appendChild(ui.el('button', { class: 'btn', text: t('cl.toolbar.bulkUse'), onclick: onBulkUseSelected }));
       bar.appendChild(ui.el('button', { class: 'btn', text: t('cl.toolbar.bulkVoid'), onclick: onBulkVoidSelected }));
-      bar.appendChild(ui.el('button', { class: 'btn', text: t('cl.toolbar.bulkGrace'), onclick: onBulkGraceUseSelected }));
-      bar.appendChild(ui.el('button', { class: 'btn', style: 'border-color:var(--danger);color:var(--danger)', text: t('cl.toolbar.bulkDelete'), onclick: onBulkDeleteSelected }));
+      if (admin) bar.appendChild(ui.el('button', { class: 'btn', text: t('cl.toolbar.bulkGrace'), onclick: onBulkGraceUseSelected }));
+      if (admin) bar.appendChild(ui.el('button', { class: 'btn', style: 'border-color:var(--danger);color:var(--danger)', text: t('cl.toolbar.bulkDelete'), onclick: onBulkDeleteSelected }));
     }
     if (unlockedCount > 0) {
       bar.appendChild(ui.el('button', { class: 'btn', text: t('cl.toolbar.relock'), onclick: onDiscardRowEdits }));

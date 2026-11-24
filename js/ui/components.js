@@ -360,6 +360,42 @@ CertApp.ui.renderSwitchUserLink = function () {
   }, [CertApp.i18n.t('operator.switch')]));
 };
 
+// "관리자 모드" / "관리자 모드 종료" toggle in the sidebar footer (see access.js). Re-rendered by
+// access.apply() so its label follows the current mode.
+CertApp.ui.renderAdminToggle = function () {
+  var footer = document.querySelector('.sidebar-footer');
+  if (!footer) return;
+  var ui = CertApp.ui, t = CertApp.i18n.t;
+  var old = document.getElementById('admin-toggle-link');
+  if (old) old.parentNode.removeChild(old);
+  var admin = CertApp.access.isAdmin();
+  footer.appendChild(ui.el('button', {
+    id: 'admin-toggle-link', class: 'logout-link' + (admin ? ' admin-on' : ''),
+    onclick: function () {
+      if (CertApp.access.isAdmin()) {
+        CertApp.access.exit();
+        ui.toast(t('admin.exited'), 'success');
+        return;
+      }
+      var pw = ui.el('input', { type: 'password', placeholder: t('admin.passwordLabel'), autocomplete: 'off' });
+      ui.openModal(t('admin.enterTitle'), [
+        ui.el('div', { class: 'muted', style: 'margin-bottom:10px' }, [t('admin.enterDesc')]),
+        ui.el('div', {}, [ui.el('label', { text: t('admin.passwordLabel') }), pw])
+      ], function () {
+        CertApp.access.enter(pw.value).then(function (ok) {
+          ui.toast(t(ok ? 'admin.entered' : 'admin.wrongPassword'), ok ? 'success' : 'error');
+        }).catch(function () { ui.toast(t('admin.wrongPassword'), 'error'); });
+      }, t('admin.enterConfirm'));
+      pw.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        var ok = document.querySelector('#modal-backdrop .modal-footer .btn-primary');
+        if (ok) ok.click();
+      });
+      setTimeout(function () { pw.focus(); }, 50);
+    }
+  }, [t(admin ? 'admin.exit' : 'admin.enter')]));
+};
+
 // Shared-password mode: a small "로그아웃" link in the sidebar footer that clears the login
 // session and reloads (back to the login screen).
 CertApp.ui.renderLogoutLink = function () {

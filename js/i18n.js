@@ -239,6 +239,11 @@ CertApp.i18n = (function () {
       'guide.issue.title': '발행 (New Issue)', 'guide.redeem.title': '사용 처리 (Redemption)', 'guide.void.title': '취소 / 환불 (Void &amp; Refund)',
       'guide.expiry.title': '만료 및 소멸 인식 (Expiry &amp; Write-Off)', 'guide.grace.title': '잡이익 환원 (Grace Use)', 'guide.extend.title': '유효기간 연장 (Extend Expiry)',
       'guide.misc.title': '정합성 점검 · 부가 기능',
+      'admin.enter': '🔒 관리자 모드', 'admin.exit': '🔓 관리자 모드 종료', 'admin.enterTitle': '관리자 모드',
+      'admin.enterDesc': '관리자 비밀번호를 입력하면 이 브라우저에서 전체 메뉴와 관리 기능이 표시됩니다.',
+      'admin.passwordLabel': '관리자 비밀번호', 'admin.enterConfirm': '확인',
+      'admin.entered': '관리자 모드로 전환했습니다.', 'admin.exited': '관리자 모드를 종료했습니다.', 'admin.wrongPassword': '비밀번호가 올바르지 않습니다.',
+      'ov.print': '🖨 인쇄', 'ov.printTitle': '증서 원장 개요', 'ov.printPeriod': '조회 기간', 'ov.printedAt': '출력',
     },
     en: {
       'nav.overview': 'Overview', 'nav.certlist': 'Certificate List', 'nav.expiry': 'Expiry Queue', 'nav.miscRevenue': 'Misc Income', 'nav.posting': 'Close Summary', 'nav.integrity': 'Integrity Check', 'nav.guide': 'User Guide',
@@ -469,6 +474,11 @@ CertApp.i18n = (function () {
       'guide.issue.title': 'New Issue', 'guide.redeem.title': 'Redemption', 'guide.void.title': 'Void &amp; Refund',
       'guide.expiry.title': 'Expiry &amp; Write-Off', 'guide.grace.title': 'Grace Use', 'guide.extend.title': 'Extend Expiry',
       'guide.misc.title': 'Integrity Check &amp; Other Features',
+      'admin.enter': '🔒 Admin mode', 'admin.exit': '🔓 Exit admin mode', 'admin.enterTitle': 'Admin Mode',
+      'admin.enterDesc': 'Enter the admin password to show all menus and admin features in this browser.',
+      'admin.passwordLabel': 'Admin password', 'admin.enterConfirm': 'OK',
+      'admin.entered': 'Switched to admin mode.', 'admin.exited': 'Exited admin mode.', 'admin.wrongPassword': 'Incorrect password.',
+      'ov.print': '🖨 Print', 'ov.printTitle': 'Certificate Ledger Overview', 'ov.printPeriod': 'Period', 'ov.printedAt': 'Printed',
     }
   };
 
@@ -505,6 +515,7 @@ CertApp.i18n = (function () {
       btn.classList.toggle('active', btn.dataset.lang === lang);
     });
     if (CertApp.ui && CertApp.ui.renderOperatorChip) CertApp.ui.renderOperatorChip();
+    if (CertApp.ui && CertApp.ui.renderAdminToggle && CertApp.access) CertApp.ui.renderAdminToggle();
   }
 
   return { t: t, getLang: getLang, setLang: setLang, applyStatic: applyStatic };
