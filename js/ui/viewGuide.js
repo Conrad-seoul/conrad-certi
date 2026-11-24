@@ -43,11 +43,13 @@ CertApp.viewGuide = (function () {
         ['새 만료일(미래 날짜) + Mate Approval # 입력', '관리자 승인번호를 함께 입력한 뒤 [연장]을 클릭합니다.'],
         ['결과', '만료 대기열에서 제외되며 다시 ACTIVE(유효) 상태로 복원됩니다.']
       ] },
-      misc: { steps: [
+      general: { steps: [
         ['관리자 모드', '일반 사용자에게는 개요 · 증서 목록 · 사용자 가이드만 보이고, 증서 목록에서는 발행 · 사용 처리 · 취소/환불만 할 수 있습니다. 나머지 메뉴와 기능(잠금 해제 수정, 일괄 필드 변경, 잡이익 환원, 삭제, 유효기간 연장 등)은 사이드바 하단 [🔒 관리자 모드]에서 비밀번호를 입력해야 표시됩니다.'],
         ['개요 인쇄', '개요 화면의 [🖨 인쇄]를 누르면 선택한 조회 기간의 개요가 A4 가로 한 장으로 출력됩니다.'],
+        ['되돌리기 (Undo)', '상단 정보바의 [되돌리기]로 직전 작업(발행 · 사용 · 취소 등) 1단계를 즉시 복구합니다.']
+      ] },
+      misc: { steps: [
         ['정합성 점검', '차액 불일치 · 날짜 누락 등 회계 오류를 실시간으로 감지합니다. 오류 항목의 [수정]을 누르면 해당 증서 잠금이 풀려 즉시 고칠 수 있습니다.'],
-        ['되돌리기 (Undo)', '상단 정보바의 [되돌리기]로 직전 작업(발행 · 사용 · 취소 등) 1단계를 즉시 복구합니다.'],
         ['감사 로그 · 이력 관리', '모든 데이터 변경은 전후 스냅샷과 함께 감사 로그에 영구 기록됩니다. 수동 수정 시 변경 사유 입력이 필수이며, 부서 공용 로그인으로 운영됩니다.'],
         ['가져오기 / 내보내기', '엑셀 원장을 업로드하거나 현재 데이터를 내보냅니다. 업로드 중 오류가 있는 건은 \'검토 필요\'로 자동 분류됩니다.']
       ] }
@@ -86,18 +88,22 @@ CertApp.viewGuide = (function () {
         ['Enter new expiry date (future) + Mate Approval #', 'Enter the manager approval number, then click [Extend].'],
         ['Result', 'The certificate is removed from the Expiry Queue and restored to ACTIVE.']
       ] },
-      misc: { steps: [
+      general: { steps: [
         ['Admin mode', 'General users see only Overview · Certificate List · User Guide, and in the Certificate List can only issue, use and void/refund. Other menus and features (unlock-edit, set field, grace use, delete, extend validity, etc.) appear after entering the password via [🔒 Admin mode] at the bottom of the sidebar.'],
         ['Print overview', 'Click [🖨 Print] on the Overview to print the selected period on one A4 landscape page.'],
+        ['Undo', 'The [Undo] button in the top bar instantly reverts the last action (issue, redeem, void, etc.), one step.']
+      ] },
+      misc: { steps: [
         ['Integrity Check', 'Detects accounting errors such as amount mismatches or missing dates in real time. Click [Edit] on an error to unlock that certificate and fix it right away.'],
-        ['Undo', 'The [Undo] button in the top bar instantly reverts the last action (issue, redeem, void, etc.), one step.'],
         ['Audit log · history', 'Every data change is permanently recorded in the audit log with before/after snapshots. Manual edits require a reason. The app runs on a shared department login.'],
         ['Import / Export', 'Upload an Excel ledger or export the current data. Rows with errors during upload are flagged as \'Needs Review\' automatically.']
       ] }
     }
   };
 
-  function topic(cls, title, section) {
+  // adminOnly sections get a small "관리자" badge in the title and are rendered only in admin mode.
+  function topic(cls, title, section, adminOnly) {
+    if (adminOnly) title += ' <span class="guide-admin-badge">🔒 ' + t('guide.adminBadge') + '</span>';
     var stepsHtml = section.steps.map(function (s) {
       return '<li><div class="gt">' + s[0] + '</div><div class="gd">' + s[1] + '</div></li>';
     }).join('');
@@ -115,10 +121,15 @@ CertApp.viewGuide = (function () {
     html += topic('gt-issue', t('guide.issue.title'), c.issue);
     html += topic('gt-redeem', t('guide.redeem.title'), c.redeem);
     html += topic('gt-void', t('guide.void.title'), c.void);
-    html += topic('gt-expiry', t('guide.expiry.title'), c.expiry);
-    html += topic('gt-grace', t('guide.grace.title'), c.grace);
-    html += topic('gt-extend', t('guide.extend.title'), c.extend);
-    html += topic('gt-misc', t('guide.misc.title'), c.misc);
+    html += topic('gt-misc', t('guide.general.title'), c.general);
+    // Admin-only flows: shown only in admin mode, so general users never read about menus and
+    // buttons they cannot see (see access.js).
+    if (CertApp.access.isAdmin()) {
+      html += topic('gt-expiry', t('guide.expiry.title'), c.expiry, true);
+      html += topic('gt-grace', t('guide.grace.title'), c.grace, true);
+      html += topic('gt-extend', t('guide.extend.title'), c.extend, true);
+      html += topic('gt-misc', t('guide.misc.title'), c.misc, true);
+    }
     html += '</div>';
     container.innerHTML = html;
   }
